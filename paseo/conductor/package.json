@@ -1,0 +1,56 @@
+{
+  "name": "paseo-conductor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Coordinate agents and concerts, answer blockers, and follow work through to completion.",
+  "scripts": {
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tests/preview && tsc --noEmit -p tests/browser",
+    "lint": "eslint client && eslint tests && eslint server shared index.server.ts index.client.tsx playwright.config.ts vite.config.ts eslint.config.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "tsx --test tests/*.test.ts",
+    "test:ui": "playwright test",
+    "preview": "vite --host 127.0.0.1",
+    "build:preview": "vite build",
+    "check": "npm run sync:check && npm run typecheck && npm run lint && npm run format:check && npm test && npm run test:ui",
+    "test:host": "tsx tests/host/smoke.ts",
+    "test:client": "tsx tests/host/client-smoke.ts",
+    "audit": "npm audit --audit-level=high",
+    "sync:check": "node ../../scripts/sync-core.mjs conductor paseo --check"
+  },
+  "devDependencies": {
+    "@getpaseo/client": "0.11.0-beta.3",
+    "@getpaseo/plugin": "0.11.0-beta.3",
+    "@getpaseo/protocol": "0.11.0-beta.3",
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "@playwright/test": "1.63.0",
+    "@tanstack/react-query": "5.90.21",
+    "@types/node": "22.19.15",
+    "@types/react": "19.1.17",
+    "@types/react-dom": "19.1.9",
+    "@types/react-native": "0.72.8",
+    "eslint": "9.39.1",
+    "prettier": "3.6.2",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-native-web": "0.21.3",
+    "tsx": "4.21.0",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.48.1",
+    "vite": "8.3.2",
+    "zod": "4.4.3"
+  },
+  "overrides": {
+    "esbuild": "0.28.1"
+  },
+  "files": [
+    "index.client.tsx",
+    "index.server.ts",
+    "client",
+    "server",
+    "shared",
+    "paseo-plugin.json",
+    "README.md"
+  ]
+}

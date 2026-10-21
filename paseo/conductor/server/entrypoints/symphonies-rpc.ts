@@ -1,0 +1,84 @@
+import type { PluginServerContext } from "@getpaseo/plugin/server";
+import {
+  deleteSymphony,
+  getSymphonyAccess,
+  listSymphonies,
+  readSymphony,
+} from "../../shared/symphonies/rpc";
+import { SymphonyError } from "../../shared/symphonies/errors";
+import { listWithProjects } from "../../shared/symphonies/projects";
+import { symphonyService } from "./symphonies-service";
+import { paseoSymphonyHost } from "../engine/paseo/symphony-host";
+import { paseoAgentsHost } from "../engine/paseo/agents-host";
+import { paseoProfilesPort } from "../engine/paseo/profiles-port";
+import { pages } from "../../shared/agents/directory";
+import { paseoConnection } from "../engine/paseo/connection";
+import { commandHooks } from "./symphonies-hooks";
+import { registerProfilesRpc } from "./profiles-rpc";
+
+async function guarded<T>(action: () => Promise<T>): Promise<T> {
+  try {
+    return await action();
+  } catch (error) {
+    if (error instanceof SymphonyError) {
+      throw error;
+    }
+    throw new Error(
+      "Conductor could not load or save this symphony. Refresh and inspect symphony storage; native requests remain available.",
+    );
+  }
+}
+
+export function registerSymphonies(
+  server: PluginServerContext,
+  directory: string,
+) {
+  const connection = paseoConnection();
+  const service = symphonyService({
+    directory,
+    host: () => paseoSymphonyHost(connection.require()),
+    paseoProfilesPort: () => paseoProfilesPort(connection.require()),
+    connected: () => connection.available,
+    hooksAvailable: typeof server.before === "function",
+  });
+  const { store, profiles, access, ready } = service;
+  registerProfilesRpc(server, profiles);
+  const stopHooks = commandHooks(
+    server,
+    access,
+    connection.remember,
+    service.interrupt,
+    ready,
+  );
+  server.handle(getSymphonyAccess, async (_input, { paseo }) => {
+    connection.remember(paseo);
+    await ready;
+    return access;
+  });
+  server.handle(listSymphonies, (input, { paseo }) =>
+    guarded(async () => {
+      connection.remember(paseo);
+      const host = paseoAgentsHost(paseo);
+      return listWithProjects(
+        () => store.list(),
+        async () => (await pages((cursor) => host.concerts(cursor))).entries,
+        input.concertId,
+      );
+    }),
+  );
+  server.handle(readSymphony, ({ id }, { paseo }) => {
+    connection.remember(paseo);
+    return guarded(async () => store.read(id));
+  });
+  server.handle(deleteSymphony, ({ id, version }, { paseo }) =>
+    guarded(async () => {
+      connection.remember(paseo);
+      await store.remove(id, version);
+      return { deleted: true } as const;
+    }),
+  );
+  return async () => {
+    await service.close();
+    stopHooks();
+  };
+}

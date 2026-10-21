@@ -1,0 +1,7 @@
+{
+  "id": "conductor",
+  "description": "Coordinate agents and concerts, answer blockers, and follow work through to completion.",
+  "requirements": {
+    "paseo": ">=0.10.3"
+  }
+}

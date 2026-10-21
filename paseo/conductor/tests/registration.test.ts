@@ -1,0 +1,87 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import {
+  openPodium,
+  registerPodiumNavigation,
+} from "../client/podium/registration";
+
+function fixture() {
+  const calls: string[] = [];
+  const register = (kind: string, id: string) => {
+    calls.push(`${kind}:${id}`);
+    return () => {
+      calls.push(`remove:${kind}:${id}`);
+    };
+  };
+  const basic = {
+    addSurface: (id: string) => register("surface", id),
+    addSidebarItem: ({ surface }: { surface: string }) =>
+      register("sidebar", surface),
+    addCommandCenterItem: ({ id }: { id: string }) => register("command", id),
+  } satisfies Parameters<typeof registerPodiumNavigation>[0];
+  const modern = {
+    ...basic,
+    addScreen: ({ id }: { id: string }) => register("screen", id),
+    addSidebarHeaderItem: ({ id }: { id: string }) => register("header", id),
+  } satisfies Parameters<typeof registerPodiumNavigation>[0];
+  return { calls, basic, modern };
+}
+
+await test("0.10 registers a host-wide surface and native sidebar entry, with cleanup", async () => {
+  const { calls, basic } = fixture();
+  const removers = registerPodiumNavigation(
+    basic,
+    () => null,
+    () => null,
+  );
+  assert.deepEqual(calls, [
+    "surface:podium",
+    "sidebar:podium",
+    "command:open-podium",
+  ]);
+  for (const remove of removers.reverse()) {
+    await remove();
+  }
+  assert.deepEqual(calls.slice(3), [
+    "remove:command:open-podium",
+    "remove:sidebar:podium",
+    "remove:surface:podium",
+  ]);
+});
+
+await test("0.11 registers only the modern screen and live sidebar contribution", () => {
+  const { calls, modern } = fixture();
+  registerPodiumNavigation(
+    modern,
+    () => null,
+    () => null,
+  );
+  assert.deepEqual(calls, [
+    "screen:podium",
+    "header:podium",
+    "command:open-podium",
+  ]);
+});
+
+await test("an incomplete modern capability set keeps the working surface entry points", () => {
+  const { calls, basic, modern } = fixture();
+  registerPodiumNavigation(
+    { ...basic, addScreen: modern.addScreen },
+    () => null,
+    () => null,
+  );
+  assert.deepEqual(calls.slice(0, 2), ["surface:podium", "sidebar:podium"]);
+});
+
+await test("Command Center opens the selected host through its available navigation API", () => {
+  const calls: string[] = [];
+  const basic = { openSurface: (id: string) => calls.push(`surface:${id}`) };
+  openPodium(basic);
+  openPodium({
+    ...basic,
+    openScreen: ({ screenId }) => {
+      calls.push(`screen:${screenId}`);
+    },
+  });
+  assert.deepEqual(calls, ["surface:podium", "screen:podium"]);
+});
