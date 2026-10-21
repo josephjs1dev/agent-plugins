@@ -1,4 +1,21 @@
 import tseslint from "typescript-eslint";
+import { readFileSync } from "node:fs";
+
+// .core-files lists the host-neutral core that other hosts copy. Core code must
+// not reach the Paseo SDK or this adapter's Paseo-only modules.
+const coreFiles = readFileSync(new URL(".core-files", import.meta.url), "utf8")
+  .split("\n")
+  .filter((file) => /\.tsx?$/.test(file));
+const hostImports = {
+  group: [
+    "@getpaseo/*",
+    "@getpaseo/**",
+    "**/engine/paseo/*",
+    "**/entrypoints/*",
+  ],
+  message:
+    "Core files (.core-files) are host-neutral: no Paseo SDK or adapter modules. Reach the host through a host.ts port.",
+};
 
 const sdkPeerImports = {
   group: [
@@ -95,6 +112,30 @@ export default tseslint.config(
         },
       ],
     },
+  },
+  // Core files: later entries replace the server/shared rule for these files.
+  {
+    files: coreFiles,
+    ignores: [
+      "server/core/symphonies/metrics-recorder.ts",
+      "server/core/harnesses/**",
+      "tests/**",
+    ],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        { patterns: [hostImports, harnessImports] },
+      ],
+    },
+  },
+  {
+    files: coreFiles.filter(
+      (file) =>
+        file === "server/core/symphonies/metrics-recorder.ts" ||
+        file.startsWith("server/core/harnesses/") ||
+        file.startsWith("tests/"),
+    ),
+    rules: { "no-restricted-imports": ["error", { patterns: [hostImports] }] },
   },
   // The client never imports the Paseo SDK server side or server/engine/paseo at all;
   // its Paseo data access lives behind client/paseo/.

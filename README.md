@@ -1,32 +1,32 @@
 # agent-plugins
 
-Plugins for agent hosts. Each plugin keeps host-neutral logic in a shared core
-and one adapter per host.
+Plugins for agent hosts. Each plugin has one adapter per host. The Paseo
+adapter holds the source of the plugin's host-neutral core.
 
 ```
-packages/<plugin>/      host-neutral domain, contracts, and tests
-paseo/<plugin>/         Paseo plugin (installable on its own)
+paseo/<plugin>/         Paseo plugin and the plugin's core (installable on its own)
 bb/<plugin>/            bb plugin (installable on its own)
-scripts/sync-core.mjs   generates a core's copy inside a host adapter
+scripts/sync-core.mjs   copies a plugin's core into another host adapter
 ```
 
-Hosts install one plugin directory on its own, so each adapter commits a
-generated copy of its core. The sync places each core `src/` module where the
-host's runtime rules allow it and rewrites imports. Edit core files only under
-`packages/<plugin>/src/`, then sync:
+`paseo/<plugin>/.core-files` lists the core: the host-neutral modules in
+`shared/` and `server/core/`, and their tests. Hosts install one plugin
+directory on its own, so every other adapter commits a copy of these files at
+the same paths. Edit core files only in the Paseo adapter, then copy them:
 
 ```bash
-node scripts/sync-core.mjs conductor paseo
+node scripts/sync-core.mjs conductor bb
 ```
 
-Each adapter's `npm run check` fails when its copy drifts from the core.
+Add `--check` to fail when a copy drifts. The Paseo adapter's lint forbids
+Paseo SDK and adapter imports in core files.
 
 ## Plugins
 
-| Plugin     | Core                                        | Paseo                                 | bb                       |
-| ---------- | ------------------------------------------- | ------------------------------------- | ------------------------ |
-| Conductor  | [packages/conductor](packages/conductor/)   | [paseo/conductor](paseo/conductor/)   | [planned](bb/conductor/) |
-| Essentials | [packages/essentials](packages/essentials/) | [paseo/essentials](paseo/essentials/) | —                        |
+| Plugin     | Paseo (with core)                     | bb                       |
+| ---------- | ------------------------------------- | ------------------------ |
+| Conductor  | [paseo/conductor](paseo/conductor/)   | [planned](bb/conductor/) |
+| Essentials | [paseo/essentials](paseo/essentials/) | —                        |
 
 Conductor turns an approved plan into a symphony of task agents and follows
 the work to completion. It stores its data in `$CONDUCTOR_HOME` (default

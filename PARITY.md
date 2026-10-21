@@ -10,11 +10,11 @@ Status: **done**, **partial**, **planned**, or **n/a** (the host does not need i
 The core reaches a host only through these ports. An adapter must implement
 each port before it can run the matching domain code.
 
-| Port                | Defined in                                             | Paseo                                                        | bb      |
-| ------------------- | ------------------------------------------------------ | ------------------------------------------------------------ | ------- |
-| `AgentsHost`        | `packages/conductor/src/agents/host.ts`                | done: `paseo/conductor/server/engine/paseo/agents-host.ts`   | planned |
-| `SymphonyHost`      | `packages/conductor/src/symphonies/host.ts`            | done: `paseo/conductor/server/engine/paseo/symphony-host.ts` | planned |
-| `PaseoProfilesPort` | `packages/conductor/src/symphonies/profile-catalog.ts` | done: `paseo/conductor/server/engine/paseo/profiles-port.ts` | planned |
+| Port                | Defined in                                  | Paseo                                                        | bb      |
+| ------------------- | ------------------------------------------- | ------------------------------------------------------------ | ------- |
+| `AgentsHost`        | `shared/agents/host.ts`                     | done: `paseo/conductor/server/engine/paseo/agents-host.ts`   | planned |
+| `SymphonyHost`      | `shared/symphonies/host.ts`                 | done: `paseo/conductor/server/engine/paseo/symphony-host.ts` | planned |
+| `PaseoProfilesPort` | `server/core/symphonies/profile-catalog.ts` | done: `paseo/conductor/server/engine/paseo/profiles-port.ts` | planned |
 
 `PaseoProfilesPort` has a Paseo-specific name and record shape. Rename or
 generalize it in the core before bb implements it.
@@ -45,9 +45,9 @@ surfaces. bb must rebuild the Podium on the bb plugin SDK.
 
 ## Validation
 
-| Check                      | Core | Paseo                            | bb      |
-| -------------------------- | ---- | -------------------------------- | ------- |
-| Core drift (`sync:check`)  | n/a  | done                             | planned |
-| Unit tests                 | done | done                             | planned |
-| Browser tests (Playwright) | n/a  | done                             | planned |
-| Host smoke tests           | n/a  | done: `test:host`, `test:client` | planned |
+| Check                            | Core         | Paseo                            | bb      |
+| -------------------------------- | ------------ | -------------------------------- | ------- |
+| Core drift (`sync-core --check`) | n/a (source) | n/a (source)                     | planned |
+| Unit tests                       | done         | done                             | planned |
+| Browser tests (Playwright)       | n/a          | done                             | planned |
+| Host smoke tests                 | n/a          | done: `test:host`, `test:client` | planned |

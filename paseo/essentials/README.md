@@ -230,21 +230,22 @@ checking, ESLint, Prettier, and tests using temporary files and fake I/O, withou
   Update the manifest's Paseo requirement if a feature needs a newer host API.
 - Before submitting, run `npm run check` here and `git diff --check`.
 
-### Shared core
+### Core files
 
-Host-neutral code lives in [`packages/essentials`](../../packages/essentials). Paseo installs
-this directory on its own, so it commits a generated copy of the core.
-`node scripts/sync-core.mjs essentials paseo` places each core `src/` module by runtime:
+`.core-files` lists the host-neutral core: Node-free modules in `shared/`,
+Node modules in `server/core/`, and their tests. This adapter holds the
+source. Other host adapters commit a copy at the same paths, made by
+`node scripts/sync-core.mjs essentials <host>`.
 
-- Node-free modules go to `shared/`, where both bundles can import them.
-- Modules that reach Node go to `server/core/`, which only the daemon bundle sees.
-- `tests/` keeps its paths.
+- Do not import a host SDK in core files. Lint enforces this rule.
+- Reach the host through the `host.ts` ports.
+- Keep the RPC transport in the adapter. The core exports plain
+  `<name>Definition` objects, and `shared/**/*rpc.ts` wraps them with
+  `defineRpc`/`defineSettings`.
+- Add a new core file to `.core-files`.
 
-The sync rewrites imports for the new locations and formats the copies.
-`.core-files` lists the generated files. Edit them in the core, never here.
-`npm run sync:check` fails when the copy drifts. `tests/client/bundle-boundaries.test.ts` checks
-Paseo's bundle rules: `shared/` imports only shared code, and neither bundle
-reaches the other runtime's modules.
+`tests/client/bundle-boundaries.test.ts` checks Paseo's bundle rules: `shared/` imports only shared code, and
+neither bundle reaches the other runtime's modules.
 
 Paseo-only code: `client/`, `index.*`, `server/engine/paseo/` (workspace
 sessions and model refresh through the Paseo client), `server/entrypoints/`

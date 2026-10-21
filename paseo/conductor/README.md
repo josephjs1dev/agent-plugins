@@ -93,7 +93,7 @@ read on the daemon host and nothing is sent off the machine.
 | OpenCode    | `~/.local/share/opencode/opencode.db`               | `XDG_DATA_HOME`                                                                                             |
 
 Conductor reads only the given session's log; it does not scan unrelated
-session contents. Harness-specific reader code lives in `packages/conductor/src/harnesses/`
+session contents. Harness-specific reader code lives in `server/core/harnesses/`
 behind one harness-neutral interface.
 
 Up to four read-only task agents can run concurrently (three by default). Task agents share
@@ -676,21 +676,27 @@ For focused checks, use `npm run typecheck`, `npm test`, or `npm run test:ui`.
   changing them. Release subscriptions and other resources during cleanup.
 - Run `npm run check` in `paseo/conductor/` and `git diff --check` before submitting.
 
-### Shared core
+### Core files
 
-Host-neutral code lives in [`packages/conductor`](../../packages/conductor). Paseo installs
-this directory on its own, so it commits a generated copy of the core.
-`node scripts/sync-core.mjs conductor paseo` places each core `src/` module by runtime:
+`.core-files` lists the host-neutral core: Node-free modules in `shared/`,
+Node modules in `server/core/`, and their tests. This adapter holds the
+source. Other host adapters commit a copy at the same paths, made by
+`node scripts/sync-core.mjs conductor <host>`.
 
-- Node-free modules go to `shared/`, where both bundles can import them.
-- Modules that reach Node go to `server/core/`, which only the daemon bundle sees.
-- `tests/` keeps its paths.
+- Do not import a host SDK in core files. Lint enforces this rule.
+- Reach the host through the `host.ts` ports.
+- Keep the RPC transport in the adapter. The core exports plain
+  `<name>Definition` objects, and `shared/**/*rpc.ts` wraps them with
+  `defineRpc`/`defineSettings`.
+- Add a new core file to `.core-files`.
 
-The sync rewrites imports for the new locations and formats the copies.
-`.core-files` lists the generated files. Edit them in the core, never here.
-`npm run sync:check` fails when the copy drifts. `tests/bundle-boundaries.test.ts` checks
-Paseo's bundle rules: `shared/` imports only shared code, and neither bundle
-reaches the other runtime's modules.
+`tests/bundle-boundaries.test.ts` checks Paseo's bundle rules: `shared/` imports only shared code, and
+neither bundle reaches the other runtime's modules.
+
+Every host stores Conductor data in `$CONDUCTOR_HOME` (default `~/.conductor`).
+`adoptLegacyHome(target, legacy)` moves a host's earlier directory there once.
+It leaves a symlink at the old path, so running task agents keep reaching their
+command launcher. If the move fails, Conductor keeps the legacy directory.
 
 Paseo-only code: `client/`, `index.*`, `server/engine/paseo/`,
 `server/entrypoints/`, `server/skills/`, the `defineRpc` wrappers in

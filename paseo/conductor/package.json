@@ -13,11 +13,10 @@
     "test:ui": "playwright test",
     "preview": "vite --host 127.0.0.1",
     "build:preview": "vite build",
-    "check": "npm run sync:check && npm run typecheck && npm run lint && npm run format:check && npm test && npm run test:ui",
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm test && npm run test:ui",
     "test:host": "tsx tests/host/smoke.ts",
     "test:client": "tsx tests/host/client-smoke.ts",
-    "audit": "npm audit --audit-level=high",
-    "sync:check": "node ../../scripts/sync-core.mjs conductor paseo --check"
+    "audit": "npm audit --audit-level=high"
   },
   "devDependencies": {
     "@getpaseo/client": "0.11.0-beta.3",
