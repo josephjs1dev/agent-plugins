@@ -14,12 +14,12 @@ Each adapter depends on its core with `"<plugin>": "file:../../packages/<plugin>
 and imports modules by name, such as `conductor/symphonies/commands`. Edit the
 core only in `packages/<plugin>/`. The core's lint forbids host SDK imports.
 
-- **Paseo** links the package as a symlink, so core edits are live. The
-  manifest `build` step runs `npm install` on a Git install.
-- **bb** copies the package into `node_modules` (`install-links=true` in
-  `.npmrc`), because bb installs only the plugin directory. Run
-  `npm run core:refresh` after a core edit. `npm run check` fails on a stale
-  copy.
+npm links the package as a symlink, so core edits are live in every adapter.
+
+- **Paseo:** the manifest `build` step runs `npm install` on a Git install.
+- **bb:** a Git install deletes `.npmrc` and installs only the plugin
+  directory. bb's bundler then resolves `zod` from the core's real path. The
+  core's `tsconfig.json` `paths` fall back to the bb adapter's `zod`.
 
 Adapter tests import core test fixtures by relative path
 (`../../packages/<plugin>/tests/...`), not through `node_modules`.

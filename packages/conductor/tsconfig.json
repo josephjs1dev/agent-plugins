@@ -10,7 +10,10 @@
     "noImplicitOverride": true,
     "noEmit": true,
     "skipLibCheck": true,
-    "types": ["node"]
+    "types": ["node"],
+    "paths": {
+      "zod": ["./node_modules/zod", "../../bb/conductor/node_modules/zod"]
+    }
   },
   "include": ["**/*.ts"],
   "exclude": ["node_modules"]

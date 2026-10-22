@@ -46,9 +46,8 @@ surfaces. bb must rebuild the Podium on the bb plugin SDK.
 
 ## Validation
 
-| Check                      | Core         | Paseo                            | bb                              |
-| -------------------------- | ------------ | -------------------------------- | ------------------------------- |
-| Stale core copy            | n/a (source) | n/a (symlink)                    | done: `core:check`              |
-| Unit tests                 | done         | done                             | done: fake-host tests           |
-| Browser tests (Playwright) | n/a          | done                             | planned                         |
-| Host smoke tests           | n/a          | done: `test:host`, `test:client` | planned: `bb plugin build` only |
+| Check                      | Core | Paseo                            | bb                              |
+| -------------------------- | ---- | -------------------------------- | ------------------------------- |
+| Unit tests                 | done | done                             | done: fake-host tests           |
+| Browser tests (Playwright) | n/a  | done                             | planned                         |
+| Host smoke tests           | n/a  | done: `test:host`, `test:client` | planned: `bb plugin build` only |

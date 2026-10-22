@@ -65,15 +65,14 @@ would treat the other host's agents as missing. The worker profile store,
 ## Core
 
 The core is the `conductor` package in `packages/conductor/`. Edit it there,
-never here. `.npmrc` sets `install-links=true`, so npm copies the package into
-`node_modules`. bb installs only this directory, and a symlink would leave
-`zod` unresolved. npm does not refresh the copy after a core edit:
+never here. npm links it as a symlink, so core edits are live.
 
-```bash
-npm run core:refresh
-```
+A bb Git install deletes `.npmrc` and runs `npm install` in this directory
+only. bb's bundler resolves each core import from the core's real path, where
+no `zod` is installed. The `zod` entry in `packages/conductor/tsconfig.json`
+`paths` falls back to this adapter's `node_modules/zod`.
 
-`npm run check` fails on a stale copy. Adapter code lives in `server.ts`,
+Adapter code lives in `server.ts`,
 `server/engine/bb/`, `server/entrypoints/`, `skills/`, and `tests/`.
 
 ## Install
@@ -89,7 +88,7 @@ bb plugin install path:/absolute/path/to/agent-plugins --plugin conductor
 
 ```bash
 npm install
-npm run check        # stale core, typecheck, lint, format, tests
+npm run check        # typecheck, lint, format, tests
 bb plugin build      # bundles dist/server.js
 bb plugin install .  # loads this directory into the running bb
 ```

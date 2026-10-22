@@ -17,14 +17,12 @@
     "server": "./server.ts"
   },
   "scripts": {
-    "core:check": "diff -rq --exclude=node_modules --exclude=package-lock.json ../../packages/conductor node_modules/conductor || (echo 'node_modules/conductor is stale. Run: npm run core:refresh' && exit 1)",
-    "core:refresh": "rm -rf node_modules/conductor && npm install",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "tsx --test tests/*.test.ts",
-    "check": "npm run core:check && npm run typecheck && npm run lint && npm run format:check && npm test"
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm test"
   },
   "dependencies": {
     "conductor": "file:../../packages/conductor",

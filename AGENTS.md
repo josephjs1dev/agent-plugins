@@ -10,8 +10,9 @@ Essentials (a Paseo adapter in `paseo/essentials/`).
 
 Each adapter depends on its core with `"<plugin>": "file:../../packages/<plugin>"`
 and imports core modules by name, such as `conductor/symphonies/commands`.
-Paseo links the package as a symlink. bb copies it (`install-links=true`),
-because bb installs only the plugin directory. Edit the core only in
+npm links the package as a symlink. A bb Git install has no `zod` next to the
+core, so the core's `tsconfig.json` `paths` fall back to the bb adapter's
+`zod`. Edit the core only in
 `packages/<plugin>/`. Conductor data lives in `$CONDUCTOR_HOME` (default
 `~/.conductor`) for every host.
 
@@ -62,8 +63,7 @@ scripts. Keep dependencies pinned and update the lockfile when they change.
 ## Validation
 
 Run `npm run check` in `packages/<plugin>/` and in each changed
-`<host>/<plugin>/`. In bb adapters, run `npm run core:refresh` after a core
-edit. The bb check fails on a stale copy. The check runs type checking, linting, formatting checks, and tests. Tests use temporary
+`<host>/<plugin>/`. The check runs type checking, linting, formatting checks, and tests. Tests use temporary
 files and fake processes/HTTP responses; they do not require real credentials.
 Live installation, reload, and visual verification are separate actions.
 Run `git diff --check` for changes across the repository.
