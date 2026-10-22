@@ -1,7 +1,6 @@
 import type { PluginHandlerContext } from "@getpaseo/plugin/server";
 import { cliNames, type CliId } from "essentials/cli-maintenance";
-import { inspectInstallation } from "essentials/cli-installation";
-import { run } from "essentials/cli-process";
+import { refreshCliCache } from "essentials/cli-cache";
 
 // The compiler provides @getpaseo/plugin, not @getpaseo/client.
 type PaseoApi = PluginHandlerContext["paseo"];
@@ -26,44 +25,11 @@ export async function refreshModels(
     throw new Error("Workspace unavailable.");
   }
 
-  let cacheWarning = "";
-
-  if (id === "opencode" || id === "pi") {
-    try {
-      const overrides = (await paseo.config.get()).config.providers;
-      const installation = await inspectInstallation(id, overrides[id], signal);
-      const args =
-        id === "opencode"
-          ? ["models", "--refresh"]
-          : ["update", "--models", "--no-approve"];
-
-      if (
-        id === "pi" &&
-        !(
-          await run(
-            installation.executable,
-            ["update", "--help"],
-            installation.env,
-            signal,
-          )
-        ).includes("--models")
-      ) {
-        throw new Error("Pi model refresh requires a newer CLI.");
-      }
-
-      await run(
-        installation.executable,
-        args,
-        installation.env,
-        signal,
-        45_000,
-      );
-    } catch {
-      cacheWarning =
-        " The CLI cache could not be refreshed; check its version and connection.";
-    }
-  }
-
+  const cacheWarning = await refreshCliCache(
+    id,
+    async () => (await paseo.config.get()).config.providers[id],
+    signal,
+  );
   const options = workspace?.workspaceDirectory
     ? { cwd: workspace.workspaceDirectory }
     : {};

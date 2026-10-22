@@ -16,13 +16,10 @@ import {
   readReminderConfig,
   snoozeReminder,
 } from "../../shared/context-reminder/rpc";
-import { DEFAULT_WINDOW_TOKENS } from "essentials/context-reminder/gauge";
 import {
-  FRESH_STATE,
-  nextReminder,
-  reminderTier,
-  type ReminderState,
-} from "essentials/context-reminder/reminder-policy";
+  createReminderTracker,
+  demoNotice,
+} from "essentials/context-reminder/tracker";
 
 type Paseo = PluginHandlerContext["paseo"];
 
@@ -54,7 +51,7 @@ async function appendNotice(
  */
 export default function contribute(server: PluginServerContext) {
   const settings = server.registerSettings(contextReminderSettings);
-  const states = new Map<string, ReminderState>();
+  const tracker = createReminderTracker();
   let missingReadLogged = false;
 
   async function readSettings(): Promise<ContextReminderSettings> {
@@ -102,23 +99,14 @@ export default function contribute(server: PluginServerContext) {
       return;
     }
 
-    const config = await readSettings();
-
-    if (!config.enabled) {
-      return;
-    }
-
-    const max = usage.contextWindowMaxTokens || DEFAULT_WINDOW_TOKENS;
-    const next = nextReminder(
-      states.get(agentId) ?? FRESH_STATE,
+    const notice = tracker.observe(
+      agentId,
       used,
-      max,
-      config,
-      Date.now(),
+      usage.contextWindowMaxTokens ?? null,
+      await readSettings(),
     );
-    states.set(agentId, next.state);
 
-    if (next.tier === null) {
+    if (notice === null) {
       return;
     }
 
@@ -126,36 +114,23 @@ export default function contribute(server: PluginServerContext) {
       paseo,
       agentId,
       `context-reminder-${turnId ?? Date.now()}`,
-      {
-        usedTokens: used,
-        maxTokens: max,
-        tier: next.tier,
-        snoozeMinutes: config.snoozeMinutes,
-      },
+      notice,
     );
   }
 
   server.handle(readReminderConfig, async () =>
     toReminderConfig(await readSettings()),
   );
-  server.handle(snoozeReminder, ({ agentId, minutes }) => {
-    const snoozedUntil = Date.now() + minutes * 60_000;
-    states.set(agentId, {
-      ...(states.get(agentId) ?? FRESH_STATE),
-      snoozedUntil,
-    });
-
-    return { snoozedUntil: new Date(snoozedUntil).toISOString() };
-  });
+  server.handle(snoozeReminder, ({ agentId, minutes }) => ({
+    snoozedUntil: tracker.snooze(agentId, minutes),
+  }));
   server.handle(demoReminder, async ({ agentId, percent }, { paseo }) => {
-    const config = await readSettings();
-    const used = Math.round((percent * DEFAULT_WINDOW_TOKENS) / 100);
-    await appendNotice(paseo, agentId, `context-reminder-demo-${Date.now()}`, {
-      usedTokens: used,
-      maxTokens: DEFAULT_WINDOW_TOKENS,
-      tier: reminderTier(used, DEFAULT_WINDOW_TOKENS, config) ?? "warn",
-      snoozeMinutes: config.snoozeMinutes,
-    });
+    await appendNotice(
+      paseo,
+      agentId,
+      `context-reminder-demo-${Date.now()}`,
+      demoNotice(percent, await readSettings()),
+    );
 
     return {};
   });
@@ -180,13 +155,13 @@ export default function contribute(server: PluginServerContext) {
     },
   );
   const removeArchived = server.on("agent.archived", ({ agent }) => {
-    states.delete(agent.id);
+    tracker.forget(agent.id);
   });
 
   // RPC handlers have no remover; Paseo drops them when the plugin stops.
   return () => {
     removeTurnEnded();
     removeArchived();
-    states.clear();
+    tracker.clear();
   };
 }

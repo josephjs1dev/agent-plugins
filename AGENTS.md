@@ -6,7 +6,8 @@ agent-plugins holds plugins for several agent hosts. Each plugin has one
 adapter per host in `<host>/<plugin>/`. The npm package `packages/<plugin>/`
 holds the plugin's host-neutral core. The plugins are Conductor (a Paseo adapter in
 `paseo/conductor/`, with an experimental bb adapter in `bb/conductor/`) and
-Essentials (a Paseo adapter in `paseo/essentials/`).
+Essentials (a Paseo adapter in `paseo/essentials/`, with an experimental bb
+adapter in `bb/essentials/`).
 
 Each adapter depends on its core with `"<plugin>": "file:../../packages/<plugin>"`
 and imports core modules by name, such as `conductor/symphonies/commands`.
@@ -14,7 +15,8 @@ npm links the package as a symlink. A bb Git install has no `zod` next to the
 core, so the core's `tsconfig.json` `paths` fall back to the bb adapter's
 `zod`. Edit the core only in
 `packages/<plugin>/`. Conductor data lives in `$CONDUCTOR_HOME` (default
-`~/.conductor`) for every host.
+`~/.conductor`) for every host. Essentials data lives in `$ESSENTIALS_HOME`
+(default `~/.essentials`).
 
 ## Always-on rules
 
@@ -49,6 +51,8 @@ Read [README.md](README.md) for the layout and plugin catalog. Before changing
 Essentials, read [the Paseo README](paseo/essentials/README.md). Before changing
 Conductor, read [the Paseo README](paseo/conductor/README.md). Before changing
 the bb Conductor adapter, also read [its README](bb/conductor/README.md).
+Before changing the bb Essentials adapter, also read
+[its README](bb/essentials/README.md).
 For frontend work, also read
 [Frontend Coding Styles](.agents/rules/typescript/frontend-styles.md).
 

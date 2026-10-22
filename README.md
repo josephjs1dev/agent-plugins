@@ -26,16 +26,17 @@ Adapter tests import core test fixtures by relative path
 
 ## Plugins
 
-| Plugin     | Paseo (with core)                     | bb                            |
-| ---------- | ------------------------------------- | ----------------------------- |
-| Conductor  | [paseo/conductor](paseo/conductor/)   | [experimental](bb/conductor/) |
-| Essentials | [paseo/essentials](paseo/essentials/) | —                             |
+| Plugin     | Paseo (with core)                     | bb                             |
+| ---------- | ------------------------------------- | ------------------------------ |
+| Conductor  | [paseo/conductor](paseo/conductor/)   | [experimental](bb/conductor/)  |
+| Essentials | [paseo/essentials](paseo/essentials/) | [experimental](bb/essentials/) |
 
 Conductor turns an approved plan into a symphony of task agents and follows
 the work to completion. It stores its data in `$CONDUCTOR_HOME` (default
 `~/.conductor`) on every host.
-[PARITY.md](PARITY.md) tracks what each host
-adapter supports.
 
 Essentials adds subscription limits, token history, workspace usage, coding
-CLI maintenance, and context-window reminders.
+CLI maintenance, and context-window reminders. It stores its data in
+`$ESSENTIALS_HOME` (default `~/.essentials`) on every host.
+
+[PARITY.md](PARITY.md) tracks what each host adapter supports.
