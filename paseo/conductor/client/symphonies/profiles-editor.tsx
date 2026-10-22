@@ -13,7 +13,7 @@ import {
   type ProfileDraft,
 } from "conductor/symphonies/profiles";
 import type { RoutingMode, RoutingRole } from "conductor/symphonies/routing";
-import type { PodiumSession } from "../podium/session";
+import type { PodiumSession } from "conductor/podium/session";
 import { Button } from "../ui/controls";
 import {
   Segmented,
@@ -29,26 +29,23 @@ import {
   profileDraftFromForm,
   profileFormFor,
   profileFormKey,
+  routingFocusTarget,
+  savedProfileForm,
+  toggleRole,
   validateProfileForm,
+  withModel,
+  withProvider,
   type ProfileField,
   type ProfileForm,
   type ProfileFormErrors,
-} from "./profiles-draft";
-import { ProfilePicker, type PickerOption } from "./profiles-picker";
+} from "conductor/podium/profiles-draft";
+import { ROLE_LABELS, sizeLabel } from "conductor/podium/roles";
+import {
+  profileEditorChoices,
+  profileRolesNote,
+} from "conductor/podium/profiles-view";
+import { ProfilePicker } from "./profiles-picker";
 import type { ProfilesData } from "./profiles";
-
-const ROLE_LABELS: Record<RoutingRole, string> = {
-  exploration: "Exploration",
-  implementation: "Implementation",
-  planning: "Planning",
-  review: "Review",
-};
-
-const SIZE_LABELS: Record<string, string> = {
-  small: "Small",
-  medium: "Medium",
-  large: "Large",
-};
 
 /**
  * One filled text input: surface-filled with a rounded boundary that lights
@@ -343,16 +340,13 @@ export function ProfileEditor({
     if (!section) {
       return;
     }
-    const current = formRef.current;
-    // A profile without roles gets a role chip; otherwise the size control,
-    // so the control that can unblock routing takes the focus.
+    // The control that can unblock routing takes the focus.
+    const focus = routingFocusTarget(formRef.current);
     let selector = '[data-testid^="profile-role-"]';
-    if (current.roles.length > 0) {
-      if (current.size === "") {
-        selector = '[data-testid^="profile-segment-"]';
-      } else {
-        selector = `[data-testid="profile-segment-${current.size}"]`;
-      }
+    if (focus.kind === "size") {
+      selector = focus.size
+        ? `[data-testid="profile-segment-${focus.size}"]`
+        : '[data-testid^="profile-segment-"]';
     }
     const target =
       section.querySelector?.(selector) ??
@@ -405,17 +399,7 @@ export function ProfileEditor({
         return;
       }
       // Re-anchor the draft so Save disables again until the next change.
-      const savedForm = {
-        ...form,
-        ...(savedId ? { id: savedId } : {}),
-        name: draft.name,
-        notes: draft.notes,
-        provider: draft.provider,
-        model: draft.model ?? "",
-        thinkingOptionId: draft.thinkingOptionId ?? "",
-        modeId: draft.modeId ?? "",
-        instructions: draft.instructions,
-      };
+      const savedForm = savedProfileForm(form, draft, savedId);
       setForm(savedForm);
       setInitialForm(savedForm);
       setSavedNotice(true);
@@ -487,43 +471,17 @@ export function ProfileEditor({
     setErrors({});
   };
 
-  const entry = data.providers?.providers.find(
-    (provider) => provider.id === form.provider,
-  );
-  const modelEntry = entry?.models.find((model) => model.id === form.model);
-  const providerOptions: readonly PickerOption[] =
-    data.providers?.providers.map((provider) => ({
-      value: provider.id,
-      label: provider.label,
-      detail: provider.available ? undefined : "unavailable",
-    })) ?? [];
-  const modelOptions: readonly PickerOption[] =
-    entry?.models.map((model) => ({
-      value: model.id,
-      label: model.label,
-      detail: model.isDefault ? "default" : undefined,
-    })) ?? [];
-  const thinkingOptions: readonly PickerOption[] =
-    modelEntry?.thinkingOptions.map((option) => ({
-      value: option.id,
-      label: option.label,
-      detail: option.isDefault ? "default" : undefined,
-    })) ?? [];
-  const modeOptions: readonly PickerOption[] =
-    entry?.modes.map((item) => ({
-      value: item.id,
-      label: item.label,
-      detail: item.elevated ? "elevated" : undefined,
-    })) ?? [];
-  const knownMode = entry?.modes.find((item) => item.id === form.modeId);
+  const choices = profileEditorChoices(data.providers, form);
+  const providerOptions = choices.providers;
+  const modelOptions = choices.models;
+  const thinkingOptions = choices.thinking;
+  const modeOptions = choices.modes;
   // A duplicated draft has no id until the store assigns one on save.
   const isCreate = form.id === undefined;
   // Pickers only apply when the provider is known; otherwise free text keeps
   // imported or untouched profiles editable without a loaded catalog entry.
-  const pickable = entry !== undefined;
-  const ceilingHelper = knownMode?.description
-    ? `${knownMode.description} The Conductor's own permission ceiling always applies.`
-    : "The Conductor's own permission ceiling always applies.";
+  const pickable = choices.entry !== undefined;
+  const ceilingHelper = choices.modeHelper;
 
   return (
     <ScrollView
@@ -635,15 +593,7 @@ export function ProfileEditor({
             compact={compact}
             testID="profile-provider-picker"
             error={Boolean(errors.provider)}
-            onSelect={(value) =>
-              patch({
-                // A provider change invalidates its bound child choices.
-                provider: value,
-                ...(form.model || form.modeId || form.thinkingOptionId
-                  ? { model: "", modeId: "", thinkingOptionId: "" }
-                  : {}),
-              })
-            }
+            onSelect={(value) => patch(withProvider(form, value))}
           />
         ) : (
           <Input
@@ -666,13 +616,7 @@ export function ProfileEditor({
               value={form.model}
               compact={compact}
               testID="profile-model-picker"
-              onSelect={(value) =>
-                patch({
-                  model: value,
-                  // Thinking options belong to one model; reset on change.
-                  ...(modelEntry?.id === value ? {} : { thinkingOptionId: "" }),
-                })
-              }
+              onSelect={(value) => patch(withModel(form, value))}
             />
           </Field>
           <Field
@@ -779,13 +723,7 @@ export function ProfileEditor({
                   theme={theme}
                   role={role}
                   selected={form.roles.includes(role)}
-                  onToggle={() =>
-                    patch({
-                      roles: form.roles.includes(role)
-                        ? form.roles.filter((held) => held !== role)
-                        : [...form.roles, role],
-                    })
-                  }
+                  onToggle={() => patch(toggleRole(form, role))}
                 />
               ))}
             </View>
@@ -797,9 +735,7 @@ export function ProfileEditor({
                 lineHeight: 15,
               }}
             >
-              {form.roles.length > 0
-                ? `Routing considers this profile for ${form.roles.length === 1 ? "one role" : `${form.roles.length} roles`}${form.size ? " and its size" : " once a size is set"}.`
-                : `Routing never picks this profile. Enforce routing is ${mode === "strict" ? "on" : "off"}.`}
+              {profileRolesNote(form, mode)}
             </Text>
           </View>
         </Field>
@@ -816,8 +752,8 @@ export function ProfileEditor({
               allowClear
               options={PROFILE_SIZES.map((size) => ({
                 value: size,
-                label: SIZE_LABELS[size] ?? size,
-                accessibilityLabel: `${SIZE_LABELS[size] ?? size} size`,
+                label: sizeLabel(size),
+                accessibilityLabel: `${sizeLabel(size)} size`,
               }))}
               value={form.size}
               onChange={(size) => patch({ size })}

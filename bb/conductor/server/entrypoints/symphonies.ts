@@ -65,6 +65,7 @@ export function symphonyService({
   };
   return {
     store,
+    profiles,
     execution,
     reconcile,
     async close(): Promise<void> {

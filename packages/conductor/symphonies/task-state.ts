@@ -22,7 +22,8 @@ export interface TaskDisplayState {
   waitingFor: string[];
 }
 
-const LABELS: Record<TaskStateKey, string> = {
+/** The display label for each task state. */
+export const TASK_STATE_LABELS: Record<TaskStateKey, string> = {
   ready: "Ready",
   waiting: "Waiting",
   running: "Running",
@@ -64,14 +65,22 @@ export function taskState(
     ) {
       return {
         key: attempt.state,
-        label: LABELS[attempt.state],
+        label: TASK_STATE_LABELS[attempt.state],
         waitingFor: [],
       };
     }
     if (attempt.state === "completed") {
       return unsettled(attempt)
-        ? { key: "finishing", label: LABELS.finishing, waitingFor: [] }
-        : { key: "completed", label: LABELS.completed, waitingFor: [] };
+        ? {
+            key: "finishing",
+            label: TASK_STATE_LABELS.finishing,
+            waitingFor: [],
+          }
+        : {
+            key: "completed",
+            label: TASK_STATE_LABELS.completed,
+            waitingFor: [],
+          };
     }
   }
   const review = isReviewTask(task);
@@ -87,6 +96,6 @@ export function taskState(
     return !(review && prerequisite?.state === "needs-changes");
   });
   return waitingFor.length
-    ? { key: "waiting", label: LABELS.waiting, waitingFor }
-    : { key: "ready", label: LABELS.ready, waitingFor: [] };
+    ? { key: "waiting", label: TASK_STATE_LABELS.waiting, waitingFor }
+    : { key: "ready", label: TASK_STATE_LABELS.ready, waitingFor: [] };
 }

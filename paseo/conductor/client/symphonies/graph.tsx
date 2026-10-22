@@ -14,24 +14,28 @@ import {
   layoutGraph,
   type GraphEdgeLayout,
   type GraphPoint,
-  type GraphLayoutSummary,
 } from "conductor/symphonies/layout";
-import { taskState, type TaskStateKey } from "conductor/symphonies/task-state";
-import { conflictReason } from "conductor/symphonies/score";
+import {
+  TASK_STATE_LABELS,
+  taskState,
+  type TaskStateKey,
+} from "conductor/symphonies/task-state";
 import type { ConductorProfile } from "conductor/symphonies/profiles";
 import type { ProviderCatalog } from "../../shared/symphonies/profiles-rpc";
 import { Button } from "../ui/controls";
-import {
-  StatusMarker,
-  statusColor,
-  taskStatusPresentation,
-} from "../ui/status";
+import { StatusMarker, statusColor } from "../ui/status";
+import { taskStatusPresentation } from "conductor/podium/status";
 import { HarnessMark } from "../ui/harness-mark";
+import { taskIdentity } from "conductor/podium/worker-identity";
 import {
-  identityLabel,
-  taskIdentity,
-  type WorkerIdentity,
-} from "./worker-identity";
+  graphNodeLabel,
+  graphRelations,
+  presentTaskStates,
+  selectionRelationsText,
+  summaryLine,
+  workerClause,
+  LEGEND_ORDER,
+} from "conductor/podium/graph";
 
 /**
  * Unrelated edges fade to this opacity while a node is selected: still
@@ -39,33 +43,6 @@ import {
  * selected relationship.
  */
 const EDGE_DIM_OPACITY = 0.3;
-
-/** Legend order follows the shared task-state projection's own set. */
-const LEGEND_ORDER: readonly TaskStateKey[] = [
-  "ready",
-  "waiting",
-  "running",
-  "blocked",
-  "finishing",
-  "completed",
-  "needs-changes",
-  "failed",
-];
-
-const LEGEND_LABELS: Record<TaskStateKey, string> = {
-  ready: "Ready",
-  waiting: "Waiting",
-  running: "Running",
-  blocked: "Blocked",
-  finishing: "Finishing",
-  completed: "Completed",
-  "needs-changes": "Needs changes",
-  failed: "Failed",
-};
-
-/** Count label helpers for the compact heading. */
-const plural = (count: number, singular: string, rest: string) =>
-  `${count} ${count === 1 ? singular : rest}`;
 
 function Segment({
   p1,
@@ -202,16 +179,6 @@ function Edge({
 }
 
 /**
- * The worker sentence for a node's accessible label and the selection panel:
- * what actually runs versus what the plan alone names.
- */
-function workerClause(identity: WorkerIdentity): string {
-  return identity.source === "launched"
-    ? `Runs on ${identityLabel(identity)}`
-    : `Planned: ${identityLabel(identity)}`;
-}
-
-/**
  * One task node: a muted ID row that shares its line with the worker's
  * harness mark and model when the task names a worker, then a 14px two-line
  * title and the status icon and label from the shared presentation map.
@@ -249,11 +216,12 @@ function GraphNode({
   const presentation = taskStatusPresentation(state);
   const color = statusColor(theme, presentation.color);
   const identity = taskIdentity(symphony, task, profiles, catalog);
-  const waitsFor = task.prerequisites.length
-    ? ` Waits for ${task.prerequisites.join(", ")}.`
-    : "";
-  const worker = identity?.provider ? ` ${workerClause(identity)}.` : "";
-  const label = `${selected ? "Task" : "Select task"} ${task.id} — ${task.title}. ${presentation.label}.${waitsFor}${worker}${selected ? " Selected." : ""}`;
+  const label = graphNodeLabel({
+    task,
+    stateLabel: presentation.label,
+    identity,
+    selected,
+  });
   const active = selected || focused;
   // The 2px accent frame marks either the active node or keyboard focus; a
   // selected node's direct neighbors carry the accent at 1px so the selected
@@ -399,7 +367,7 @@ function Legend({
   const presentationFor = (state: TaskStateKey) =>
     taskStatusPresentation({
       key: state,
-      label: LEGEND_LABELS[state],
+      label: TASK_STATE_LABELS[state],
       waitingFor: [],
     });
   const caption = {
@@ -438,7 +406,7 @@ function Legend({
             />
           </View>
           <Text style={{ ...caption, color: theme.colors.foreground }}>
-            {LEGEND_LABELS[state]}
+            {TASK_STATE_LABELS[state]}
           </Text>
         </View>
       ))}
@@ -452,20 +420,6 @@ function Legend({
       </View>
     </View>
   );
-}
-
-/** "8 tasks · 5 dependency arrows · 7 shared-resource conflicts". */
-function summaryLine(summary: GraphLayoutSummary): string {
-  const parts = [
-    plural(summary.tasks, "task", "tasks"),
-    plural(summary.dependencies, "dependency arrow", "dependency arrows"),
-  ];
-  if (summary.conflicts === 1) {
-    parts.push("1 shared-resource conflict");
-  } else if (summary.conflicts > 1) {
-    parts.push(`${summary.conflicts} shared-resource conflicts`);
-  }
-  return parts.join(" · ");
 }
 
 /**
@@ -545,13 +499,7 @@ function SelectionPanel({
         </Text>
       )}
       <Text selectable style={muted}>
-        {task.prerequisites.length
-          ? `Waits for ${task.prerequisites.join(", ")}`
-          : "No dependencies"}
-        {dependents.length ? `\nNeeded by ${dependents.join(", ")}` : ""}
-        {state.waitingFor.length
-          ? `\nStill waiting on ${state.waitingFor.join(", ")}`
-          : ""}
+        {selectionRelationsText(task, dependents, state.waitingFor)}
       </Text>
       {conflicts.map((conflict) => (
         <Text key={conflict.other.id} selectable style={muted}>
@@ -640,9 +588,7 @@ export function ScoreView({
   const layout = useMemo(() => layoutGraph(score, compact), [score, compact]);
   const geometry = graphGeometry(compact);
   const presentStates = useMemo(
-    () => [
-      ...new Set(score.tasks.map((task) => taskState(symphony, task).key)),
-    ],
+    () => presentTaskStates(symphony, score.tasks),
     [score, symphony],
   );
   if (!score.tasks.length) {
@@ -653,38 +599,12 @@ export function ScoreView({
     );
   }
   const selectedTask = selected ? tasks.get(selected) : undefined;
-  const connectedNodes = new Set<string>();
-  if (selectedTask) {
-    for (const edge of layout.edges) {
-      const touches =
-        edge.from === selectedTask.id || edge.to === selectedTask.id;
-      if (!touches) {
-        continue;
-      }
-      connectedNodes.add(edge.from);
-      connectedNodes.add(edge.to);
-    }
-    for (const other of score.tasks) {
-      const reason = conflictReason(selectedTask, other);
-      if (other.id !== selectedTask.id && reason) {
-        connectedNodes.add(other.id);
-      }
-    }
-    connectedNodes.delete(selectedTask.id);
-  }
-  const selectedConflicts = selectedTask
-    ? score.tasks
-        .filter((other) => other.id !== selectedTask.id)
-        .flatMap((other) => {
-          const reason = conflictReason(selectedTask, other);
-          return reason ? [{ other, reason }] : [];
-        })
-    : [];
-  const selectedDependents = selectedTask
-    ? score.tasks
-        .filter((other) => other.prerequisites.includes(selectedTask.id))
-        .map((other) => other.id)
-    : [];
+  const relations = selectedTask
+    ? graphRelations(score.tasks, layout.edges, selectedTask)
+    : null;
+  const connectedNodes = relations?.connected ?? new Set<string>();
+  const selectedConflicts = relations?.conflicts ?? [];
+  const selectedDependents = relations?.dependents ?? [];
   return (
     <View style={{ gap: 10 }} testID="symphony-graph">
       <Text

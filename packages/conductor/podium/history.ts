@@ -1,7 +1,3 @@
-/**
- * Render-only derivations for the loop-grouped History view. Pure data with no
- * React Native imports: the inspection view consumes these records directly.
- */
 import {
   previousFindingCount,
   type Attempt,
@@ -9,13 +5,11 @@ import {
   type Score,
   type StoredSymphony,
   type UnresolvedItem,
-} from "conductor/symphonies/models";
-import {
-  attemptLoop,
-  currentLoop,
-  loopVerdict,
-} from "conductor/symphonies/score";
-import type { TaskStateKey } from "conductor/symphonies/task-state";
+  type TaskFinding,
+} from "../symphonies/models";
+import type { StatusColor } from "./status";
+import { attemptLoop, currentLoop, loopVerdict } from "../symphonies/score";
+import { type TaskStateKey, taskState } from "../symphonies/task-state";
 
 /** What a finished loop reports at the top of its History section. */
 export type HistoryLoopVerdict = "succeeded" | "needs-changes" | "attention";
@@ -226,4 +220,64 @@ export function loopRecord(
  */
 export function unresolvedItemLabel(item: UnresolvedItem): string {
   return `${item.finding ?? item.taskId ?? "Open item"} — ${item.reason}`;
+}
+
+/** Display hue for a loop header's verdict. */
+export function loopVerdictColor(group: HistoryLoopGroup): StatusColor {
+  if (group.running) {
+    return "accent";
+  }
+  if (group.verdict === "attention") {
+    return "statusDanger";
+  }
+  return group.verdict === "succeeded" ? "statusSuccess" : "statusWarning";
+}
+
+/**
+ * Labels reopen findings as the attempt's input: the defects an earlier loop
+ * reported that this attempt was asked to fix or re-check, not its own result.
+ */
+export function addressedFindingsLabel(
+  findings: readonly TaskFinding[],
+  attempt: Attempt,
+): string {
+  const blocking = findings.filter(
+    (finding) => finding.severity === "blocking",
+  ).length;
+  const count = `${findings.length} finding${findings.length === 1 ? "" : "s"}`;
+  return `Addresses ${count} from loop ${attemptLoop(attempt) - 1}${
+    blocking ? ` · ${blocking} blocking` : ""
+  }`;
+}
+
+export function retryLabel(
+  attempt: Attempt,
+  previousAgentId: string | undefined,
+): string {
+  return previousAgentId === attempt.agentId
+    ? "retry · same agent"
+    : "retry · new agent";
+}
+
+/** Attempt display state for a history row: a completed report with an unsettled agent launch reads as finishing. */
+export function attemptState(
+  symphony: StoredSymphony,
+  attempt: Attempt,
+): TaskStateKey {
+  const task = symphony.revisions
+    .at(-1)
+    ?.score.tasks.find((entry) => entry.id === attempt.taskId);
+  if (!task) {
+    return attempt.state;
+  }
+  const state = taskState(symphony, task);
+  // Only keep the display state while it matches the attempt's own outcome;
+  // a later prerequisite-driven reading would mislabel this historical row.
+  if (
+    (state.key === "finishing" && attempt.state === "completed") ||
+    state.key === attempt.state
+  ) {
+    return state.key;
+  }
+  return attempt.state;
 }

@@ -13,7 +13,7 @@ import type {
   SaveProfilesResult,
 } from "conductor/symphonies/profiles";
 import type { RoutingMode } from "conductor/symphonies/routing";
-import type { PodiumSession, ViewState } from "../podium/session";
+import type { PodiumSession, ViewState } from "conductor/podium/session";
 import { StatusNotice } from "./profiles-controls";
 import { ProfileEditor } from "./profiles-editor";
 import { ProfilesPanel, ProfileRow } from "./profiles-list";

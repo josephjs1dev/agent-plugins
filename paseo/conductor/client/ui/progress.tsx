@@ -1,32 +1,12 @@
 import { Text, View } from "react-native";
 import type { ReactNode } from "react";
 import type { PluginTheme } from "@getpaseo/plugin";
-import type { TaskStateKey } from "conductor/symphonies/task-state";
-
-/**
- * One slice of a detailed progress track, in score order. `reportedComplete`
- * mirrors the shared completion count for the list (an attempt with state
- * "completed"); display state can still read "Finishing" while the agent
- * settles, so the fill never trusts `state` alone.
- */
-export interface SymphonyProgressSegment {
-  id: string;
-  title: string;
-  state: TaskStateKey;
-  reportedComplete: boolean;
-}
-
-/** Labels mirror `shared/symphonies/task-state.ts` (its map is not exported). */
-const SEGMENT_LABELS: Record<TaskStateKey, string> = {
-  ready: "Ready",
-  waiting: "Waiting",
-  running: "Running",
-  blocked: "Blocked",
-  finishing: "Finishing",
-  completed: "Completed",
-  "needs-changes": "Needs changes",
-  failed: "Failed",
-};
+import {
+  progressFraction,
+  progressLabel,
+  segmentLabel,
+  type SymphonyProgressSegment,
+} from "conductor/podium/progress";
 
 /**
  * Truthful reported-task progress. Progress always represents equal task
@@ -67,16 +47,15 @@ export function SymphonyProgress({
       </View>
     );
   }
-  const clamped = Math.min(Math.max(completedTasks, 0), Math.max(taskCount, 0));
-  const fraction = taskCount > 0 ? Math.min(clamped / taskCount, 1) : 0;
+  const fraction = progressFraction(completedTasks, taskCount);
   return (
     <View
       style={{ gap: 8 }}
-      accessibilityLabel={`${completedTasks} of ${taskCount} tasks reported complete`}
+      accessibilityLabel={progressLabel(completedTasks, taskCount)}
     >
       {showLabel && (
         <ProgressLabel theme={theme}>
-          {completedTasks} of {taskCount} tasks reported complete
+          {progressLabel(completedTasks, taskCount)}
         </ProgressLabel>
       )}
       {taskCount > 0 && segments ? (
@@ -86,7 +65,7 @@ export function SymphonyProgress({
             return (
               <View
                 key={segment.id}
-                accessibilityLabel={`${segment.title}: ${fill ? "reported complete" : SEGMENT_LABELS[segment.state]}`}
+                accessibilityLabel={segmentLabel(segment)}
                 style={{
                   height: 6,
                   flex: 1,

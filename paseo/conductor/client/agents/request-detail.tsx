@@ -7,18 +7,25 @@ import type {
   Decision,
   AgentItem,
 } from "conductor/agents/models";
-import { questionAnswers } from "conductor/agents/questions";
 import type { ProviderCatalog } from "../../shared/symphonies/profiles-rpc";
-import {
-  ageLabel,
-  isSnoozed,
-  needsAttention,
-} from "conductor/agents/attention";
+import { ageLabel } from "conductor/agents/attention";
 import { ArchiveAction } from "./archive-action";
 import { Button, Label, Notice, rowStyle } from "../ui/controls";
 import { HarnessMark } from "../ui/harness-mark";
 import { QuestionForm } from "./question-form";
-import { agentWorker } from "./queue";
+import { agentWorker, DELIVERY_MESSAGES } from "conductor/podium/agents";
+import {
+  AGENTS_COPY,
+  detailMetaLabel,
+  itemDelivery,
+  itemTitle,
+  parentTitle,
+  responseLocked,
+  responseSubmission,
+  snoozeAction,
+  snoozeNote,
+  turnOutcome,
+} from "conductor/podium/agents-view";
 
 export interface DetailActions {
   openAgent(agentId: string): void;
@@ -41,17 +48,6 @@ interface Props {
   onDraft(this: void, value: Decision): void;
   actions: DetailActions;
 }
-const messages = {
-  sending: "Sending your response…",
-  answered:
-    "Response delivered. The agent’s next activity will appear after refresh.",
-  unknown:
-    "Delivery is uncertain. Do not resend here. Open the agent and verify its current request.",
-  stale:
-    "This request changed or was resolved elsewhere. Your draft remains attached to the original request.",
-  unsupported:
-    "This request needs its native controls. Open the agent to respond.",
-};
 export function RequestDetail({
   theme,
   item,
@@ -68,38 +64,23 @@ export function RequestDetail({
   const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const worker = agentWorker(item, catalog);
-  const delivery = notice ?? item.delivery;
-  const locked =
-    stale ||
-    busy ||
-    (delivery !== null && delivery !== undefined) ||
-    item.bucket === "failed" ||
-    item.bucket === "closed";
+  const delivery = itemDelivery(item, notice);
+  const locked = responseLocked(item, { stale, busy, delivery });
+  const snooze = snoozeAction(item, now);
+  const outcome = turnOutcome(item);
+  const parent = parentTitle(item);
   const submit = async (work: () => Promise<void>) => {
     setBusy(true);
     setActionError(null);
     try {
       await work();
     } catch {
-      setActionError(
-        "The action could not be confirmed. Refresh or open the agent before trying again.",
-      );
+      setActionError(AGENTS_COPY.actionError);
     } finally {
       setBusy(false);
     }
   };
-  let valid = false;
-  let submitLabel = "Send answer";
-  if (draft && item.form?.kind === "questions") {
-    valid = questionAnswers(item.form, draft) !== null;
-  }
-  if (draft?.kind === "action" && item.form?.kind === "actions") {
-    const action = item.form.actions.find(
-      (entry) => entry.id === draft.actionId,
-    );
-    valid = Boolean(action);
-    submitLabel = `Confirm ${action?.label ?? "response"}`;
-  }
+  const { valid, label: submitLabel } = responseSubmission(item.form, draft);
   return (
     <ScrollView
       style={{ flex: 1 }}
@@ -119,7 +100,7 @@ export function RequestDetail({
             color: theme.colors.foreground,
           }}
         >
-          {item.requestId ? item.title : item.agentTitle}
+          {itemTitle(item)}
         </Text>
         {/* The queue card's worker line, inline with the bucket and age
             metadata: the mark in brand colors instead of the raw provider
@@ -140,15 +121,7 @@ export function RequestDetail({
             />
           </View>
           <Text
-            accessibilityLabel={[
-              item.requestId ? item.agentTitle : null,
-              worker.providerLabel,
-              worker.modelLabel,
-              item.bucket,
-              ageLabel(item.since, now),
-            ]
-              .filter(Boolean)
-              .join(" · ")}
+            accessibilityLabel={detailMetaLabel(item, worker, now)}
             style={{
               fontSize: 13,
               lineHeight: 20,
@@ -191,8 +164,7 @@ export function RequestDetail({
               fontWeight: "500",
             }}
           >
-            {item.parentAgentTitle ??
-              `Unavailable parent (${item.parentAgentId})`}
+            {parent}
           </Text>
           {item.parentAgentTitle && (
             <View style={{ alignItems: "flex-start" }}>
@@ -217,13 +189,12 @@ export function RequestDetail({
       )}
       {stale && (
         <Notice theme={theme} warning>
-          Connection or refresh unavailable. This is the last known state.
-          Responses are disabled until a successful refresh.
+          {AGENTS_COPY.detailStale}
         </Notice>
       )}
       {delivery && (
         <Notice theme={theme} warning={delivery === "unknown"}>
-          {messages[delivery]}
+          {DELIVERY_MESSAGES[delivery]}
         </Notice>
       )}
       {actionError && (
@@ -274,8 +245,7 @@ export function RequestDetail({
               color: theme.colors.foregroundMuted,
             }}
           >
-            Applies only to this request. Sending an answer does not confirm
-            that work resumed.
+            {AGENTS_COPY.responseScope}
           </Text>
         </View>
       )}
@@ -289,9 +259,7 @@ export function RequestDetail({
               lineHeight: 22,
             }}
           >
-            {item.lastTurn
-              ? `Last turn ${item.lastTurn.outcome} · observed ${new Date(item.lastTurn.observedAt).toLocaleString()}`
-              : "Outcome unknown — no recorded end for the current turn."}
+            {outcome.summary}
           </Text>
           <Text
             style={{
@@ -300,12 +268,10 @@ export function RequestDetail({
               lineHeight: 21,
             }}
           >
-            {item.lastTurn
-              ? "This is a recorded response outcome, not a verified task result. Review the output and required checks before treating the work as complete."
-              : "Idle means not running. Closed means the session is closed. Neither proves the task is complete. Earlier outcomes cannot be recovered from an unread flag."}
+            {outcome.explanation}
           </Text>
           <Text style={{ color: theme.colors.foregroundMuted, fontSize: 12 }}>
-            Task completion: not verified by Conductor.
+            {AGENTS_COPY.turnCompletion}
           </Text>
         </View>
       )}
@@ -316,15 +282,15 @@ export function RequestDetail({
           disabled={!actions.canNavigate}
           onPress={() => actions.openAgent(item.agentId)}
         />
-        {(needsAttention(item) || isSnoozed(item, now)) && (
+        {snooze && (
           <Button
             theme={theme}
-            label={isSnoozed(item, now) ? "Unsnooze" : "Snooze 15 min"}
+            label={snooze.label}
             disabled={stale || busy}
             onPress={() => {
-              submit(() =>
-                actions.snooze(item, isSnoozed(item, now) ? 0 : 15),
-              ).catch(() => undefined);
+              submit(() => actions.snooze(item, snooze.minutes)).catch(
+                () => undefined,
+              );
             }}
           />
         )}
@@ -359,8 +325,7 @@ export function RequestDetail({
           lineHeight: 19,
         }}
       >
-        Snooze affects Conductor’s queue only. Paseo controls native
-        notifications.
+        {snoozeNote("Paseo")}
       </Text>
       {item.details !== "" && item.form?.kind !== "native" && (
         <View style={{ gap: 12 }}>

@@ -3,12 +3,22 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import type { PluginTheme } from "@getpaseo/plugin";
 import type { AgentItem } from "conductor/agents/models";
 import type { ProviderCatalog } from "../../shared/symphonies/profiles-rpc";
-import { ageLabel, isSnoozed } from "conductor/agents/attention";
+import { ageLabel } from "conductor/agents/attention";
 import { queueGroups } from "conductor/agents/hierarchy";
-import { agentStatusPresentation, StatusMarker } from "../ui/status";
+import { agentStatusPresentation } from "conductor/podium/status";
+import { StatusMarker } from "../ui/status";
 import { Button, Label } from "../ui/controls";
 import { HarnessMark } from "../ui/harness-mark";
 import { cardSurface } from "../ui/card";
+import { agentWorker } from "conductor/podium/agents";
+import {
+  cardDelivery,
+  cardLabel,
+  cardMeta,
+  cardParent,
+  itemTitle,
+  workerLabel,
+} from "conductor/podium/agents-view";
 
 interface Props {
   items: AgentItem[];
@@ -123,29 +133,6 @@ export function Queue({
 }
 
 /**
- * The agent's worker labels through the provider catalog: the catalog's
- * provider and model labels, falling back to the raw ids the item carries.
- * An agent item recorded before snapshots carried models has no model label.
- * Shared with the request detail, which shows the same mark plus model —
- * the provider stays in the accessible label there too.
- */
-export function agentWorker(
-  item: AgentItem,
-  catalog: ProviderCatalog | undefined,
-): { providerLabel: string; modelLabel: string | null } {
-  const entry = catalog?.providers.find(
-    (provider) => provider.id === item.provider,
-  );
-  const modelEntry = item.model
-    ? entry?.models.find((model) => model.id === item.model)
-    : undefined;
-  return {
-    providerLabel: entry?.label ?? item.provider,
-    modelLabel: modelEntry?.label ?? item.model ?? null,
-  };
-}
-
-/**
  * One queue card. Hover and pressed feedback only swap the surface fill, so
  * press never moves or resizes the card; the accent border marks selection
  * and keyboard focus without relying on the fill alone. The card shares the
@@ -172,15 +159,13 @@ function AgentCard({
   const [focused, setFocused] = useState(false);
   const emphasized = selected || focused;
   const worker = agentWorker(item, catalog);
+  const parent = cardParent(item, depth);
+  const delivery = cardDelivery(item);
   return (
     <Pressable
       testID={`item-${item.key}`}
       accessibilityRole="button"
-      accessibilityLabel={
-        item.requestId
-          ? `Open ${item.title} from ${item.agentTitle}`
-          : `Open ${item.agentTitle}`
-      }
+      accessibilityLabel={cardLabel(item)}
       accessibilityState={{ selected }}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
@@ -229,7 +214,7 @@ function AgentCard({
           color: theme.colors.foreground,
         }}
       >
-        {item.requestId ? item.title : item.agentTitle}
+        {itemTitle(item)}
       </Text>
       {/* The worker line mirrors the profile card's: the mark in brand
           colors and the catalog's model label, a raw id while the catalog
@@ -251,9 +236,7 @@ function AgentCard({
         </View>
         <Text
           numberOfLines={1}
-          accessibilityLabel={[worker.providerLabel, worker.modelLabel]
-            .filter(Boolean)
-            .join(" · ")}
+          accessibilityLabel={workerLabel(worker)}
           style={{
             color: theme.colors.foreground,
             fontSize: 12,
@@ -272,16 +255,9 @@ function AgentCard({
           lineHeight: 16,
         }}
       >
-        {[
-          item.concertName,
-          item.childAgentCount > 0 &&
-            `${item.childAgentCount} child ${item.childAgentCount === 1 ? "agent" : "agents"}`,
-          isSnoozed(item, now) && "Snoozed",
-        ]
-          .filter(Boolean)
-          .join(" · ")}
+        {cardMeta(item, now)}
       </Text>
-      {item.parentAgentId && depth === 0 && (
+      {parent && (
         <Text
           numberOfLines={1}
           style={{
@@ -290,12 +266,10 @@ function AgentCard({
             lineHeight: 16,
           }}
         >
-          Parent:{" "}
-          {item.parentAgentTitle ??
-            `unavailable parent (${item.parentAgentId.slice(0, 8)})`}
+          {parent}
         </Text>
       )}
-      {item.delivery && (
+      {delivery && (
         <Text
           style={{
             color: theme.colors.statusWarning,
@@ -303,9 +277,7 @@ function AgentCard({
             lineHeight: 16,
           }}
         >
-          {item.delivery === "answered"
-            ? "Response delivered"
-            : "Check response delivery"}
+          {delivery}
         </Text>
       )}
     </Pressable>

@@ -4,3 +4,7 @@ coverage
 playwright-report
 test-results
 package-lock.json
+components
+lib
+hooks
+components.json

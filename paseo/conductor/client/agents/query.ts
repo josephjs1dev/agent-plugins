@@ -2,6 +2,7 @@ import { useRpc } from "@getpaseo/plugin/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getAgents } from "../../shared/agents/rpc";
 import type { AgentsSnapshot } from "conductor/agents/models";
+import { knownAgentIds } from "conductor/podium/agents";
 import { useDirectoryInvalidation } from "../paseo/use-directory";
 
 export const agentsQueryKey = (hostId: string) =>
@@ -16,14 +17,7 @@ export function useAgents(hostId: string) {
       const previous = cache.getQueryData<AgentsSnapshot>(
         agentsQueryKey(hostId),
       );
-      const knownAgentIds = [
-        ...new Set(
-          previous?.items
-            .filter((item) => item.requestId !== null)
-            .map((item) => item.agentId) ?? [],
-        ),
-      ].slice(0, 2000);
-      return fetch({ knownAgentIds });
+      return fetch({ knownAgentIds: knownAgentIds(previous) });
     },
     retry: false,
     staleTime: 2000,

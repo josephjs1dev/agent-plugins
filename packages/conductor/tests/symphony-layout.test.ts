@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { conflictReason } from "conductor/symphonies/score";
-import { graphGeometry, layoutGraph } from "conductor/symphonies/layout";
-import type { TaskDefinition } from "conductor/symphonies/models";
+import { conflictReason } from "../symphonies/score";
+import { graphGeometry, layoutGraph } from "../symphonies/layout";
+import type { TaskDefinition } from "../symphonies/models";
 import {
   groupedTaskState,
   hasLoopGroups,
@@ -11,15 +11,15 @@ import {
   scoreAtLoop,
   symphonyAtLoop,
   unresolvedItemLabel,
-} from "../client/symphonies/history";
-import { latestAttempt } from "conductor/symphonies/models";
+} from "../podium/history";
+import { latestAttempt } from "../symphonies/models";
 import {
   fixtureAttempt,
   fixtureLaunch,
   score,
   storedSymphony,
   task,
-} from "../../../packages/conductor/tests/symphony-fixtures";
+} from "./symphony-fixtures";
 
 /** Sixteen-word title that must truncate inside the graph node. */
 function longTask(): TaskDefinition {

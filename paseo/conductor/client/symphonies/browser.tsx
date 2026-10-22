@@ -1,7 +1,7 @@
 import { ScrollView, Text, View } from "react-native";
 import type { PluginTheme } from "@getpaseo/plugin";
 import type { StoredSymphony } from "conductor/symphonies/models";
-import type { PodiumSession, ViewState } from "../podium/session";
+import type { PodiumSession, ViewState } from "conductor/podium/session";
 import { Label } from "../ui/controls";
 import {
   SymphonyRows,

@@ -2,10 +2,12 @@ import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import type { PluginTheme } from "@getpaseo/plugin";
 import { ageLabel } from "conductor/agents/attention";
-import { type SymphonyListEntry } from "conductor/symphonies/models";
-import { StatusMarker, symphonyStatusPresentation } from "../ui/status";
+import type { SymphonyListEntry } from "conductor/symphonies/models";
+import { StatusMarker } from "../ui/status";
+import { symphonyStatusPresentation } from "conductor/podium/status";
 import { SymphonyProgress } from "../ui/progress";
 import { cardSurface } from "../ui/card";
+import { symphonyCaption } from "conductor/podium/symphony-list";
 
 /**
  * One symphony card in the list: status row with age, title, concert context
@@ -94,12 +96,7 @@ export function SymphonyRow({
           lineHeight: 16,
         }}
       >
-        {/* The project heading already names a concert that shares its name. */}
-        {symphony.source.concertName !== symphony.projectName &&
-          `${symphony.source.concertName} · `}
-        {planning
-          ? "Splitting into tasks"
-          : `${symphony.completedTasks} of ${symphony.taskCount} tasks reported complete`}
+        {symphonyCaption(symphony)}
       </Text>
       {!planning && symphony.taskCount > 0 && (
         <SymphonyProgress

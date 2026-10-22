@@ -3,6 +3,7 @@ import { lstat, mkdir, opendir, rmdir, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import {
   contextSchema,
+  deleteRefusal,
   SYMPHONY_LIMITS,
   uuidSchema,
   symphonySchema,
@@ -181,26 +182,9 @@ export function fileSymphonyStore(directory: string): SymphonyStore {
           }
           throw error;
         }
-        if (symphony.status !== "completed" && symphony.status !== "failed") {
-          throw new SymphonyError("Only finished symphonies can be deleted.");
-        }
-        if (
-          symphony.execution.attempts.some(
-            (attempt) =>
-              attempt.state === "running" ||
-              attempt.state === "blocked" ||
-              (attempt.launch !== undefined && !attempt.launch.settled),
-          )
-        ) {
-          throw new SymphonyError(
-            "This symphony still has work in progress. Wait for every attempt to settle.",
-          );
-        }
-        if (
-          symphony.execution.conducting?.phase === "planning" &&
-          symphony.execution.conducting.conductorLaunch === "pending"
-        ) {
-          throw new SymphonyError("This symphony is still planning.");
+        const refusal = deleteRefusal(symphony);
+        if (refusal) {
+          throw new SymphonyError(refusal);
         }
         if (symphony.version !== version) {
           throw new SymphonyError(

@@ -1,10 +1,7 @@
 import { useRef, useState } from "react";
 import { Pressable, Text, View, type PressableProps } from "react-native";
 import type { PluginTheme } from "@getpaseo/plugin";
-import {
-  isClassifiedRouting,
-  type RoutingMode,
-} from "conductor/symphonies/routing";
+import type { RoutingMode } from "conductor/symphonies/routing";
 import type { ConductorProfile } from "conductor/symphonies/profiles";
 import type { ProviderCatalog } from "../../shared/symphonies/profiles-rpc";
 import { Icon } from "@getpaseo/plugin/client/react-native";
@@ -12,10 +9,20 @@ import { Button, rowStyle } from "../ui/controls";
 import { HarnessMark } from "../ui/harness-mark";
 import { cardSurface } from "../ui/card";
 import { RoleChip } from "../ui/role-chip";
+import { sizeLabel } from "conductor/podium/roles";
 import { StatusNotice, TintedView } from "./profiles-controls";
 import { ProfilesSyncDialog } from "./profiles-sync";
-import { identityLabel, profileIdentity } from "./worker-identity";
+import {
+  identityLabel,
+  profileIdentity,
+} from "conductor/podium/worker-identity";
 import type { ProfilesData } from "./profiles";
+import {
+  profileCardWarning,
+  RECHECK_LINE,
+  CHECKED_LINES,
+  MODE_DESCRIPTION,
+} from "conductor/podium/profiles-view";
 
 /**
  * React Native Web 0.21 forwards onKeyDown to the DOM at runtime, but the
@@ -29,43 +36,6 @@ type KeyDownProps = {
     preventDefault(this: void): void;
   }) => void;
 };
-
-/**
- * The list header: profile creation, the one-time import from Paseo agent
- * profiles, and the global routing enforcement switch. Import results and
- * store problems surface here, where the action was taken.
- */
-/**
- * What the routing toggle promises per state. Off (warn) trusts the Conductor
- * and records deviations; on (strict) requires it to justify each one.
- */
-const MODE_DESCRIPTION: Record<RoutingMode, string> = {
-  warn: "Picks outside routing are allowed and noted on the task.",
-  strict:
-    "Picks outside routing need a justification with evidence, or they are rejected.",
-};
-
-/** The collapsed comparison behind "Learn what's checked", per mode. */
-const CHECKED_LINES: Record<RoutingMode, string[]> = {
-  warn: [
-    "The smallest eligible profile is always accepted.",
-    "A larger profile, an unclassified profile, or the Conductor's own model " +
-      "is accepted and noted on the task.",
-    "A task with no eligible profile and no explicit choice is always " +
-      "rejected.",
-  ],
-  strict: [
-    "The smallest eligible profile is always accepted.",
-    "A larger profile, an unclassified profile, or the Conductor's own model " +
-      "needs an override with evidence.",
-    "A task with no eligible profile and no explicit choice is always " +
-      "rejected.",
-  ],
-};
-
-/** The checked line that applies to both modes, last in the disclosure. */
-const RECHECK_LINE =
-  "Turning this on also rechecks the next retry of tasks already running.";
 
 /** Track width plus the gap to the label, so text below aligns with it. */
 const SWITCH_INDENT = 32 + 10;
@@ -108,6 +78,11 @@ function SwitchTrack({ theme, on }: { theme: PluginTheme; on: boolean }) {
   );
 }
 
+/**
+ * The list header: profile creation, the one-time import from Paseo agent
+ * profiles, and the global routing enforcement switch. Import results and
+ * store problems surface here, where the action was taken.
+ */
 export function ProfilesPanel({
   theme,
   data,
@@ -396,65 +371,6 @@ export function ProfilesPanel({
 }
 
 /**
- * The provider catalog marks the worker line incomplete: an unknown provider
- * id, a provider that is not ready, or a model the provider does not list.
- * Nothing is marked while the catalog has not loaded, so the checklist stays
- * quiet instead of warning about data that is merely missing client-side.
- */
-export function profileIncomplete(
-  profile: ConductorProfile,
-  catalog: ProviderCatalog | undefined,
-): boolean {
-  if (!catalog) {
-    return false;
-  }
-  const entry = catalog.providers.find(
-    (provider) => provider.id === profile.provider,
-  );
-  if (!entry || !entry.available || entry.models.length === 0) {
-    return true;
-  }
-  if (
-    profile.model &&
-    !entry.models.some((model) => model.id === profile.model)
-  ) {
-    return true;
-  }
-  return false;
-}
-
-/**
- * Why routing cannot pick this profile, for the card's own warning row:
- * classification needs at least one role and a size, and it needs a worker
- * the provider catalog reports as available. `undefined` means there is
- * nothing to warn about.
- */
-export function profileCardWarning(
-  profile: ConductorProfile,
-  catalog: ProviderCatalog | undefined,
-): string | undefined {
-  if (isClassifiedRouting(profile.routing)) {
-    return profileIncomplete(profile, catalog)
-      ? "The worker is not available, so routing skips this profile."
-      : undefined;
-  }
-  const roles = profile.routing?.roles ?? [];
-  if (roles.length > 0) {
-    return "Needs a size before routing can pick it.";
-  }
-  if (profile.routing?.size !== undefined) {
-    return "Needs at least one role before routing can pick it.";
-  }
-  return "Needs roles and size before routing can pick it.";
-}
-
-const SIZE_BADGE_LABEL: Record<string, string> = {
-  small: "Small",
-  medium: "Medium",
-  large: "Large",
-};
-
-/**
  * One profile card: a noninteractive container with two sibling buttons. Its
  * name, when-to-use notes, worker row (harness mark plus model and thinking),
  * role chips, size badge and — only when present — an instructions indicator
@@ -637,7 +553,7 @@ export function ProfileRow({
                       fontWeight: "600",
                     }}
                   >
-                    {SIZE_BADGE_LABEL[size] ?? size}
+                    {sizeLabel(size)}
                   </Text>
                 </View>
               )}

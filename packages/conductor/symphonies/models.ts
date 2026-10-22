@@ -680,6 +680,33 @@ export function symphonyStatusLabel(status: StoredSymphony["status"]): string {
   return labels[status];
 }
 
+/**
+ * Why a symphony cannot be deleted, or null when it can: only a finished
+ * symphony whose attempts have all settled and whose planning launch ended.
+ */
+export function deleteRefusal(symphony: StoredSymphony): string | null {
+  if (symphony.status !== "completed" && symphony.status !== "failed") {
+    return "Only finished symphonies can be deleted.";
+  }
+  if (
+    symphony.execution.attempts.some(
+      (attempt) =>
+        attempt.state === "running" ||
+        attempt.state === "blocked" ||
+        (attempt.launch !== undefined && !attempt.launch.settled),
+    )
+  ) {
+    return "This symphony still has work in progress. Wait for every attempt to settle.";
+  }
+  if (
+    symphony.execution.conducting?.phase === "planning" &&
+    symphony.execution.conducting.conductorLaunch === "pending"
+  ) {
+    return "This symphony is still planning.";
+  }
+  return null;
+}
+
 export function latestAttempt(
   symphony: StoredSymphony,
   taskId: string,

@@ -2,8 +2,17 @@ import { useState } from "react";
 import { Text, View } from "react-native";
 import type { PluginTheme } from "@getpaseo/plugin";
 import type { ArchiveResult, AgentItem } from "conductor/agents/models";
-import { category } from "conductor/agents/attention";
 import { Button, rowStyle } from "../ui/controls";
+import { archiveErrors } from "conductor/podium/agents";
+import {
+  AGENTS_COPY,
+  archiveBlocked,
+  archivePrompts,
+  canArchive,
+} from "conductor/podium/agents-view";
+
+const errors = archiveErrors("Paseo");
+const prompts = archivePrompts("Paseo");
 
 interface Props {
   theme: PluginTheme;
@@ -12,16 +21,6 @@ interface Props {
   directoryIncomplete: boolean;
   archive(this: void, item: AgentItem): Promise<ArchiveResult>;
 }
-const errors = {
-  stale:
-    "The agent changed. Refresh and check its current state before archiving.",
-  has_children:
-    "This agent has children. Archive or detach them in Paseo before archiving this parent.",
-  incomplete:
-    "The directory is incomplete, so child agents cannot be checked. Refresh before archiving.",
-  unknown:
-    "The archive could not be confirmed. Refresh or open the agent to check its state before trying again.",
-};
 export function ArchiveAction({
   theme,
   item,
@@ -33,16 +32,15 @@ export function ArchiveAction({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uncertain, setUncertain] = useState(false);
-  if (category(item) !== "inactive") {
+  if (!canArchive(item)) {
     return null;
   }
-  const blocked =
-    stale ||
-    directoryIncomplete ||
-    !item.archiveKey ||
-    item.childAgentCount > 0 ||
-    busy ||
-    uncertain;
+  const blocked = archiveBlocked(item, {
+    stale,
+    directoryIncomplete,
+    busy,
+    uncertain,
+  });
   const perform = async () => {
     setBusy(true);
     setError(null);
@@ -71,8 +69,7 @@ export function ArchiveAction({
               lineHeight: 20,
             }}
           >
-            Archive {item.agentTitle}? This removes the agent from active Paseo
-            lists. Concert files remain.
+            {prompts.confirm(item.agentTitle)}
           </Text>
           <View style={rowStyle}>
             <Button
@@ -109,14 +106,12 @@ export function ArchiveAction({
             lineHeight: 18,
           }}
         >
-          Archive children first. Paseo can archive attached children when their
-          parent is archived.
+          {prompts.children}
         </Text>
       )}
       {directoryIncomplete && (
         <Text style={{ color: theme.colors.foregroundMuted, fontSize: 12 }}>
-          Archiving is unavailable until the full agent directory can be
-          checked.
+          {AGENTS_COPY.archiveIncomplete}
         </Text>
       )}
       {error && (

@@ -43,12 +43,12 @@ has symphonies. Use _workspace_ only when describing Paseo itself.
 
 Install the Conductor skills once: open the Command Center (**⌘K** on macOS,
 **Ctrl+K** elsewhere) and select **Install conductor skills**. It writes each skill,
-currently `conductor-orchestrate/SKILL.md`, to `~/.claude/skills` and
+currently `paseo-conductor-orchestrate/SKILL.md`, to `~/.claude/skills` and
 `~/.agents/skills` on the daemon host. Run it again after a plugin update;
 **Remove conductor skills** deletes only copies that Conductor installed and never overwrites a skill of the
 same name that you created.
 
-Then invoke `conductor-orchestrate` in any agent, or ask the agent to orchestrate.
+Then invoke `paseo-conductor-orchestrate` in any agent, or ask the agent to orchestrate.
 That agent becomes the Conductor and keeps its conversation context: it splits the
 work into tasks, chooses a task agent per task, and dispatches real child agents. The
 Symphonies tab shows planning, task agents, dependencies, blockers, and reported
@@ -654,7 +654,7 @@ For focused checks, use `npm run typecheck`, `npm test`, or `npm run test:ui`.
 | `client/symphonies/`   | Symphony score, task progress, blockers, and reports.                      |
 | `server/entrypoints/`  | Server RPC registration, hooks, events, and the command server start.      |
 | `server/engine/paseo/` | Paseo SDK integration: the host-port implementations.                      |
-| `server/skills/`       | The bundled `conductor-orchestrate` skill and its installer.               |
+| `server/skills/`       | The bundled `paseo-conductor-orchestrate` skill and its installer.         |
 | `shared/`              | The `defineRpc` wrappers around the core's RPC definitions.                |
 | `tests/`               | Unit tests, fixture preview, browser tests, and optional host smoke tests. |
 

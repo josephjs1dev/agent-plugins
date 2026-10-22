@@ -4,7 +4,6 @@ import { Icon } from "@getpaseo/plugin/client/react-native";
 import { taskState } from "conductor/symphonies/task-state";
 import type { PluginTheme } from "@getpaseo/plugin";
 import {
-  latestAttempt,
   taskAttempts,
   type Attempt,
   type GrantedWrite,
@@ -12,28 +11,34 @@ import {
   type TaskDefinition,
 } from "conductor/symphonies/models";
 import { attemptLoop } from "conductor/symphonies/score";
+import {
+  routingDisclosureLabel,
+  taskCardFacts,
+  workerLine,
+  writesDisclosureLabel,
+} from "conductor/podium/task-card";
 import { taskMetrics } from "conductor/symphonies/metrics";
 import type {
   AttemptRouting,
   RoutingWarning,
 } from "conductor/symphonies/routing";
 import {
-  launchWorker,
   overrideLine,
   routingLine,
   warningLine,
-} from "./routing";
+} from "conductor/podium/routing";
 import { Button, Disclosure, Notice } from "../ui/controls";
 import {
   formatDuration,
   tokenTotalsLabel,
   workTotalsLabel,
-} from "./inspection";
+} from "conductor/podium/labels";
 import { HarnessMark } from "../ui/harness-mark";
 import { RoleChip } from "../ui/role-chip";
 import { cardSurface } from "../ui/card";
-import { statusColor, taskStatusPresentation } from "../ui/status";
-import { identityLabel, taskIdentity } from "./worker-identity";
+import { statusColor } from "../ui/status";
+import { taskStatusPresentation } from "conductor/podium/status";
+import { identityLabel, taskIdentity } from "conductor/podium/worker-identity";
 import type { ConductorProfile } from "conductor/symphonies/profiles";
 import type { ProviderCatalog } from "../../shared/symphonies/profiles-rpc";
 import {
@@ -43,6 +48,11 @@ import {
   ReportFooter,
   type ReportRouting,
 } from "./task-report";
+import {
+  addedWritesFor,
+  failedChecks as reportFailedChecks,
+  instructionLines,
+} from "conductor/podium/report";
 
 /**
  * Which details a card currently reveals. Owned by SymphonyDetail so state survives
@@ -61,43 +71,6 @@ export interface TaskDisclosures {
  * toggles stay independent.
  */
 export type TaskDisclosure = "summary" | "instructions" | "evidence" | "checks";
-
-/**
- * Full task brief shown behind the Instructions disclosure: the assignment,
- * then the bounds that tell a task agent where to stop.
- */
-function instructionLines(task: TaskDefinition): string[] {
-  const lines: string[] = [task.outcome];
-  if (task.criteria.length) {
-    lines.push(`Success criteria: ${task.criteria.join("; ")}`);
-  }
-  if (task.checks.length) {
-    lines.push(`Planned checks: ${task.checks.join("; ")}`);
-  }
-  if (task.reads.length) {
-    lines.push(`Reads: ${task.reads.join(", ")}`);
-  }
-  if (task.writes.length) {
-    lines.push(`Writes: ${task.writes.join(", ")}`);
-  }
-  const { provider, model, thinkingOptionId } = task.worker;
-  const inline = [
-    [provider, model].filter(Boolean).join("/"),
-    thinkingOptionId ? `thinking ${thinkingOptionId}` : "",
-  ].filter(Boolean);
-  // The stored name snapshot keeps the card readable after a profile is
-  // renamed or deleted; the raw reference only shows when none was stored.
-  lines.push(
-    inline.length
-      ? `Task agent: ${inline.join(", ")}`
-      : `Task agent profile: ${task.worker.profileName ?? task.worker.profile}`,
-  );
-  if (task.routing) {
-    lines.push(`Routing: ${task.routing.reason}`);
-  }
-  lines.push(`Stop when: ${task.stopWhen}`);
-  return lines;
-}
 
 /**
  * True when the summary may overflow the three-line clamp on a wide pane,
@@ -144,29 +117,19 @@ export function SymphonyTaskCard({
   loop?: number;
   openAgent?: (id: string) => void;
 }) {
-  const attempt = latestAttempt(symphony, task.id);
+  const {
+    attempt,
+    carriedFrom,
+    agentAttempts,
+    routing: cardRouting,
+    worker: cardWorker,
+    hasAgent,
+  } = taskCardFacts(symphony, task, loop);
   const launch = attempt?.launch;
-  // A task that did not re-run in the viewed loop keeps an earlier result.
-  const carriedFrom =
-    loop !== undefined && attempt && attemptLoop(attempt) < loop
-      ? attemptLoop(attempt)
-      : undefined;
-  // The viewed attempt's own launch choice and routing win: a takeover keeps
-  // showing the worker that actually runs. Waiting or legacy records without
-  // a launch fall back to the task definition as last routed.
-  const cardRouting = launch?.routing ?? task.routing;
-  const cardWorker = launch ? launchWorker(launch) : task.worker;
   const state = taskState(symphony, task);
   const presentation = taskStatusPresentation(state);
   const report = attempt?.report ?? null;
-  const failedChecks =
-    report?.checks.filter((check) => check.status === "failed") ?? [];
-  const agentAttempts = attempt
-    ? symphony.execution.attempts.filter(
-        (entry) =>
-          entry.taskId === task.id && entry.agentId === attempt.agentId,
-      ).length
-    : 0;
+  const failedChecks = report ? reportFailedChecks(report) : [];
   const grantedWrites = attempt?.grantedWrites ?? [];
   const addedWrites = addedWritesFor(symphony, task.id);
   // Summed work time, elapsed span, and tokens over every attempt of the
@@ -178,18 +141,11 @@ export function SymphonyTaskCard({
   const worker = identity?.provider
     ? {
         provider: identity.provider,
-        line: [identity.modelLabel, identity.thinkingLabel]
-          .filter(Boolean)
-          .join(" · "),
+        line: workerLine(identity),
       }
     : null;
   const role = task.worker.role;
-  const canOpenAgent = Boolean(
-    openAgent &&
-      attempt &&
-      attempt.agentId &&
-      attempt.launch?.state !== "failed",
-  );
+  const canOpenAgent = Boolean(openAgent && hasAgent);
   return (
     <View
       testID={`symphony-task-${task.id}`}
@@ -521,7 +477,7 @@ function RoutingDisclosure({
     >
       <Disclosure
         theme={theme}
-        label={`Routing${stored.length ? ` · ${stored.length} warning${stored.length === 1 ? "" : "s"}` : ""}`}
+        label={routingDisclosureLabel(stored.length)}
         expanded={open}
         onToggle={() => setOpen((value) => !value)}
         testID={`symphony-task-routing-${taskId}`}
@@ -621,26 +577,6 @@ function ReopenDisclosure({
 }
 
 /**
- * Conductor write additions across every attempt of the task, deduped by path
- * with each path's first reason kept: additions last for the task, not for one
- * attempt.
- */
-function addedWritesFor(
-  symphony: StoredSymphony,
-  taskId: string,
-): GrantedWrite[] {
-  const byPath = new Map<string, GrantedWrite>();
-  for (const grant of taskAttempts(symphony, taskId).flatMap(
-    (attempt) => attempt.addedWrites ?? [],
-  )) {
-    if (!byPath.has(grant.path)) {
-      byPath.set(grant.path, grant);
-    }
-  }
-  return [...byPath.values()];
-}
-
-/**
  * Write paths recorded beyond the task's declared scope, each with its reason:
  * "added" paths came from the Conductor and last for the task, "granted" paths
  * came from the latest attempt's widen and last for that attempt. Visible with
@@ -660,10 +596,7 @@ function WritesDisclosure({
   compact: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const label =
-    kind === "added"
-      ? `Added by Conductor ${grants.length}`
-      : `Granted writes ${grants.length}`;
+  const label = writesDisclosureLabel(kind, grants.length);
   return (
     <View
       style={{

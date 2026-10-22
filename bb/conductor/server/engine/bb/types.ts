@@ -7,3 +7,19 @@ export type BbThread = Awaited<ReturnType<BbSdk["threads"]["get"]>>;
 export type BbPermissionMode = NonNullable<
   Parameters<BbSdk["threads"]["spawn"]>[0]["permissionMode"]
 >;
+/** The thread fields that both `threads.get` and `threads.list` return. */
+export type BbThreadRow = Pick<
+  BbThread,
+  | "id"
+  | "status"
+  | "deletedAt"
+  | "archivedAt"
+  | "environmentId"
+  | "parentThreadId"
+  | "providerId"
+  | "title"
+  | "titleFallback"
+  | "createdAt"
+  | "updatedAt"
+  | "latestAttentionAt"
+>;

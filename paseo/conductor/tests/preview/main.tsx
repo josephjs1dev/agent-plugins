@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
 import { PodiumView } from "../../client/podium/view";
-import { PodiumSession } from "../../client/podium/session";
+import { PodiumSession } from "conductor/podium/session";
 import { initial, light, dark } from "./fixtures";
 import type { AgentsSnapshot } from "conductor/agents/models";
 import { requestForm } from "conductor/agents/questions";

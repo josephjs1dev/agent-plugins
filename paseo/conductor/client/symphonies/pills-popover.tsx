@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import type { PluginTheme } from "@getpaseo/plugin";
 import type { SymphonyListEntry } from "conductor/symphonies/models";
-import { StatusMarker, symphonyStatusPresentation } from "../ui/status";
+import { StatusMarker } from "../ui/status";
+import { symphonyStatusPresentation } from "conductor/podium/status";
 
 /**
  * One ongoing symphony inside the popover: status row with its concert,

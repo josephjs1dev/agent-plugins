@@ -4,16 +4,20 @@ import type {
   getSymphonyAccess,
   listSymphonies,
 } from "../../shared/symphonies/rpc";
-import {
-  type SymphonyContext,
-  type SymphonyListEntry,
-  type StoredSymphony,
+import type {
+  SymphonyContext,
+  StoredSymphony,
 } from "conductor/symphonies/models";
-import type { PodiumSession, ViewState } from "../podium/session";
+import type { PodiumSession, ViewState } from "conductor/podium/session";
 import { Label, Notice } from "../ui/controls";
 import { SymphonyRow } from "./row";
 import { SymphonyDetail } from "./detail";
 import type { ProfilesData } from "./profiles";
+import {
+  isSymphonyListFiltered,
+  symphonyGroups,
+  visibleSymphonies,
+} from "conductor/podium/symphony-list";
 
 export interface SymphoniesData {
   access: RpcOutput<typeof getSymphonyAccess> | undefined;
@@ -22,41 +26,6 @@ export interface SymphoniesData {
   stale: boolean;
   detail: { symphony: StoredSymphony; context: SymphonyContext } | undefined;
   detailStale: boolean;
-}
-
-export function visibleSymphonies(
-  symphonies: SymphonyListEntry[],
-  state: ViewState,
-  concertId?: string,
-) {
-  const query = state.symphonyQuery.toLowerCase().trim();
-  return symphonies.filter(
-    (symphony) =>
-      (!concertId || symphony.source.concertId === concertId) &&
-      (state.symphonyFilter === "all" ||
-        (state.symphonyFilter === "active" &&
-          ["planning", "ready", "running"].includes(symphony.status)) ||
-        (state.symphonyFilter === "blocked" &&
-          ["blocked", "failed"].includes(symphony.status)) ||
-        symphony.status === state.symphonyFilter) &&
-      [
-        symphony.title,
-        symphony.projectName,
-        symphony.source.concertName,
-        symphony.source.agentId ?? "",
-      ].some((value) => value.toLowerCase().includes(query)),
-  );
-}
-
-/** Groups by project in list order, so the most recent project leads. */
-export function symphonyGroups(symphonies: readonly SymphonyListEntry[]) {
-  const groups = new Map<string, SymphonyListEntry[]>();
-  for (const symphony of symphonies) {
-    const group = groups.get(symphony.projectName) ?? [];
-    group.push(symphony);
-    groups.set(symphony.projectName, group);
-  }
-  return [...groups].map(([label, entries]) => ({ label, entries }));
 }
 
 export function SymphonyRows({
@@ -79,9 +48,7 @@ export function SymphonyRows({
     state,
     concertId,
   );
-  const filtered = Boolean(
-    state.symphonyQuery || state.symphonyFilter !== "all",
-  );
+  const filtered = isSymphonyListFiltered(state);
   return (
     <View style={{ gap: 18 }}>
       {data.access && !data.access.available && (

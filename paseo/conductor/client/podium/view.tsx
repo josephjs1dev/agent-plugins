@@ -4,7 +4,15 @@ import type { PluginTheme } from "@getpaseo/plugin";
 import type { AgentItem, AgentsSnapshot } from "conductor/agents/models";
 import type { StoredSymphony } from "conductor/symphonies/models";
 import { visibleItems } from "conductor/agents/attention";
-import { PodiumSession } from "./session";
+import {
+  AGENTS_COPY,
+  canShowAll,
+  detailPlaceholder,
+  nextAttentionItem,
+  queueEmptyState,
+  scopedAgentCount,
+} from "conductor/podium/agents-view";
+import { PodiumSession } from "conductor/podium/session";
 import { Label, Notice } from "../ui/controls";
 import { PodiumToolbar } from "./toolbar";
 import { Queue } from "../agents/queue";
@@ -57,11 +65,7 @@ export function PodiumView(props: PodiumViewProps) {
     props.concertId,
     now,
   );
-  const agentCount = new Set(
-    (data?.items ?? [])
-      .filter((item) => !props.concertId || item.concertId === props.concertId)
-      .map((item) => item.agentId),
-  ).size;
+  const agentCount = scopedAgentCount(data?.items ?? [], props.concertId);
   const showAll = () => {
     session.update({
       filter: "all",
@@ -70,12 +74,7 @@ export function PodiumView(props: PodiumViewProps) {
     });
     props.scroll.offset = 0;
   };
-  const next = attention.find(
-    (item) =>
-      item.key !== selected?.key &&
-      item.delivery === null &&
-      !state.notices[item.key],
-  );
+  const next = nextAttentionItem(attention, selected?.key, state.notices);
   const select = (item: AgentItem) => {
     if (item.form?.kind === "native" && actions.canNavigate) {
       actions.openAgent(item.agentId);
@@ -89,34 +88,18 @@ export function PodiumView(props: PodiumViewProps) {
       select(next);
     }
   };
-  let emptyTitle = "Nothing in this view";
-  let emptyDescription = "Try another status or clear your search.";
-  if (!data || props.stale) {
-    emptyTitle = "Agent status unavailable";
-    emptyDescription = "Refresh to check the current state of your agents.";
-  } else if (state.query) {
-    emptyTitle = "No matching agents or requests";
-  } else if (agentCount === 0) {
-    emptyTitle = "No agents in this scope";
-    emptyDescription =
-      "Existing agents appear automatically. Open or create an agent in Paseo to get started.";
-  } else if (state.filter === "attention") {
-    emptyTitle = "No agents need attention";
-    emptyDescription = `${agentCount}${data.incomplete ? "+" : ""} current agents checked. No pending questions, approvals, failures, or reminders in this view.`;
-  }
-  let detailTitle = "Choose an agent to follow.";
-  let detailDescription =
-    "Existing and new agents are checked automatically. Use Running, Inactive, or All to follow their current state.";
-  if (attention.length) {
-    detailTitle = "Choose an item to review.";
-    detailDescription =
-      "Select a question, approval, failure, or reminder from the queue.";
-  }
-  if (state.selectedKey) {
-    detailTitle = "This item changed or was resolved.";
-    detailDescription =
-      "Your draft stays with the original request. Continue to the next item needing attention.";
-  }
+  const empty = queueEmptyState({
+    available: Boolean(data) && !props.stale,
+    query: state.query,
+    filter: state.filter,
+    agentCount,
+    incomplete: data?.incomplete ?? false,
+    hostName: "Paseo",
+  });
+  const placeholder = detailPlaceholder(
+    attention.length > 0,
+    state.selectedKey,
+  );
   return (
     <View
       testID="conductor-podium"
@@ -181,7 +164,7 @@ export function PodiumView(props: PodiumViewProps) {
       >
         {props.loading && !data ? (
           <View style={{ padding: 24 }}>
-            <Notice theme={theme}>Loading agents and pending requests…</Notice>
+            <Notice theme={theme}>{AGENTS_COPY.loading}</Notice>
           </View>
         ) : (
           <View
@@ -202,13 +185,10 @@ export function PodiumView(props: PodiumViewProps) {
               >
                 <Queue
                   items={items}
-                  emptyTitle={emptyTitle}
-                  emptyDescription={emptyDescription}
+                  emptyTitle={empty.title}
+                  emptyDescription={empty.description}
                   onShowAll={showAll}
-                  showAll={
-                    agentCount > 0 &&
-                    (state.filter !== "all" || Boolean(state.query))
-                  }
+                  showAll={canShowAll(agentCount, state.filter, state.query)}
                   theme={theme}
                   now={now}
                   selectedKey={state.selectedKey}
@@ -242,9 +222,7 @@ export function PodiumView(props: PodiumViewProps) {
                 ) : (
                   <View style={{ padding: 28, gap: 10, maxWidth: 620 }}>
                     <Label theme={theme}>
-                      {state.selectedKey
-                        ? "REQUEST NO LONGER PENDING"
-                        : "YOUR NEXT ACTION"}
+                      {placeholder.label.toUpperCase()}
                     </Label>
                     <Text
                       style={{
@@ -253,7 +231,7 @@ export function PodiumView(props: PodiumViewProps) {
                         lineHeight: 29,
                       }}
                     >
-                      {detailTitle}
+                      {placeholder.title}
                     </Text>
                     <Text
                       style={{
@@ -262,7 +240,7 @@ export function PodiumView(props: PodiumViewProps) {
                         lineHeight: 23,
                       }}
                     >
-                      {detailDescription}
+                      {placeholder.description}
                     </Text>
                   </View>
                 )}

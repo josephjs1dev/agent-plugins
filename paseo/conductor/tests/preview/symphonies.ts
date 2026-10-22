@@ -1,5 +1,5 @@
 import { useState, useSyncExternalStore } from "react";
-import type { PodiumSession } from "../../client/podium/session";
+import type { PodiumSession } from "conductor/podium/session";
 import type { SymphoniesData } from "../../client/symphonies/list";
 import type { ProfilesData } from "../../client/symphonies/profiles";
 import {

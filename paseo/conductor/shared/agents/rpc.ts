@@ -1,42 +1,12 @@
 import { defineRpc } from "@getpaseo/plugin";
-import { identifier } from "conductor/schema";
-import { z } from "zod";
 import {
-  answerInputSchema,
-  answerResultSchema,
-  keySchema,
-  snapshotSchema,
-  archiveResultSchema,
-} from "conductor/agents/models";
+  annotateDefinition,
+  answerRequestDefinition,
+  archiveAgentDefinition,
+  getAgentsDefinition,
+} from "conductor/agents/rpc";
 
-export const getAgents = defineRpc({
-  name: "agents.get",
-  input: z.object({ knownAgentIds: z.array(identifier).max(2000).default([]) }),
-  output: snapshotSchema,
-});
-export const archiveAgent = defineRpc({
-  name: "agents.archive",
-  input: z.object({ agentId: identifier, key: keySchema }),
-  output: archiveResultSchema,
-});
-export const answerRequest = defineRpc({
-  name: "agents.answer",
-  input: answerInputSchema,
-  output: answerResultSchema,
-});
-export const annotate = defineRpc({
-  name: "agents.annotate",
-  input: z.discriminatedUnion("kind", [
-    z.object({
-      kind: z.literal("snooze"),
-      key: keySchema,
-      minutes: z.union([z.literal(0), z.literal(15), z.literal(60)]),
-    }),
-    z.object({
-      kind: z.literal("mark"),
-      agentId: identifier,
-      marked: z.boolean(),
-    }),
-  ]),
-  output: z.object({}),
-});
+export const getAgents = defineRpc(getAgentsDefinition);
+export const archiveAgent = defineRpc(archiveAgentDefinition);
+export const answerRequest = defineRpc(answerRequestDefinition);
+export const annotate = defineRpc(annotateDefinition);

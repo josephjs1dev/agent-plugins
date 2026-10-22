@@ -3,15 +3,18 @@
 Experimental. Conductor turns an approved plan into a symphony of bb task
 threads. It dispatches the threads and follows their reports to completion.
 This adapter runs the Conductor core from `packages/conductor` on the bb plugin SDK.
-It has no Podium UI yet. [PARITY.md](../../PARITY.md) lists what it supports.
+[PARITY.md](../../PARITY.md) lists what it supports.
 
 ## Use
 
 Ask a thread to orchestrate a plan. The thread calls `conductor_orchestrate`
 and becomes the symphony's Conductor agent. It then defines tasks, dispatches
 them, and finishes the symphony. Each task agent is a child thread in the
-Conductor's environment. The `conductor-orchestrate` skill guides the thread.
+Conductor's environment. The `bb-conductor-orchestrate` skill guides the thread.
 
+- The **Conductor** page in bb's navigation rail is the Podium. It has the
+  Agents queue (questions, approvals, failures, reminders), the Symphonies
+  list and score, and the worker Profiles editor.
 - `bb conductor list` lists the stored symphonies. Add `--json` for JSON output.
 - `conductor_get` (from the Conductor or a task thread) shows one symphony.
 
@@ -33,7 +36,7 @@ Conductor's environment. The `conductor-orchestrate` skill guides the thread.
   thread also carries its agent ID in plugin metadata, so a lost mapping can be
   recovered. A tool call's identity is the calling thread, which bb verifies.
 - **Profile IDs.** The shared profile store uses Paseo's provider and mode IDs.
-  `server/engine/bb/vocabulary.ts` translates them at the host port, so a
+  `shared/vocabulary.ts` translates them at the host port, so a
   profile edited in Paseo works in bb. `bypassPermissions` and `full-access`
   become `full`, `auto-review` becomes `auto`, and `default` becomes
   `accept-edits`. A mode without a bb equivalent, such as `plan`, rejects the
@@ -45,6 +48,11 @@ Conductor's environment. The `conductor-orchestrate` skill guides the thread.
   message ID and skips a repeat.
 - **Reconciliation.** A background service reconciles symphonies every 5
   seconds.
+- **Podium.** `client/` renders the core's view logic from
+  `packages/conductor/podium/` with bb's vendored components (`components/ui/`,
+  from bb's registry). The server publishes a `podium.changed` realtime signal
+  on thread events, tool calls and writes. The app refetches on that signal and
+  every 15 seconds.
 
 ## Limits
 
@@ -52,14 +60,16 @@ Conductor's environment. The `conductor-orchestrate` skill guides the thread.
   can only use an environment on that machine.
 - Token usage per attempt is not recorded, because bb does not expose provider
   session IDs.
-- bb has no profile editor. Edit the shared profile store in Paseo's Podium.
-- Pending permission requests are not visible to Conductor.
+- The Agents queue reads a thread's model only when it inspects one thread.
+- A bb interaction other than an approval or a question opens its thread
+  instead of a Podium form.
 
 ## Data directory
 
 Symphonies live in `$CONDUCTOR_HOME/bb` (default `~/.conductor/bb`). The
 directory is separate from Paseo's symphonies, because each host's reconciler
-would treat the other host's agents as missing. The worker profile store,
+would treat the other host's agents as missing. Podium preferences and turn
+outcomes also live there. The worker profile store,
 `$CONDUCTOR_HOME/profiles.json`, is shared with Paseo.
 
 ## Core
@@ -95,3 +105,10 @@ bb plugin install .  # loads this directory into the running bb
 
 The tests use bb's fake plugin host and a temporary git checkout. They need no
 running bb.
+
+`tsconfig.json` checks the server under strict options. `tsconfig.app.json`
+checks `app.tsx`, `client/` and the vendored `components/`, `lib/` and
+`hooks/`. The vendored registry source does not compile under
+`exactOptionalPropertyTypes`, so the app config turns it off. Lint and
+Prettier skip the vendored folders. Add a registry component with
+`npx shadcn add @bb/<name>` (see `components.json`).

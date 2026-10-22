@@ -1,40 +1,14 @@
 import { defineRpc } from "@getpaseo/plugin";
 import { z } from "zod";
 import {
-  contextSchema,
-  uuidSchema,
-  symphonySchema,
-  symphonyListEntrySchema,
-  SYMPHONY_LIMITS,
-} from "conductor/symphonies/models";
-import { identifier } from "conductor/schema";
+  deleteSymphonyDefinition,
+  listSymphoniesDefinition,
+  readSymphonyDefinition,
+} from "conductor/symphonies/rpc";
 
-export const listSymphonies = defineRpc({
-  name: "symphonies.list",
-  input: z.object({ concertId: identifier.optional() }).strict(),
-  output: z.object({
-    symphonies: z
-      .array(symphonyListEntrySchema)
-      .max(SYMPHONY_LIMITS.symphonies),
-    unavailable: z.number().int().nonnegative(),
-    incomplete: z.boolean(),
-  }),
-});
-export const readSymphony = defineRpc({
-  name: "symphonies.read",
-  input: z.object({ id: uuidSchema }).strict(),
-  output: z.object({ symphony: symphonySchema, context: contextSchema }),
-});
-export const deleteSymphony = defineRpc({
-  name: "symphonies.delete",
-  input: z
-    .object({
-      id: uuidSchema,
-      version: z.number().int().nonnegative(),
-    })
-    .strict(),
-  output: z.object({ deleted: z.literal(true) }),
-});
+export const listSymphonies = defineRpc(listSymphoniesDefinition);
+export const readSymphony = defineRpc(readSymphonyDefinition);
+export const deleteSymphony = defineRpc(deleteSymphonyDefinition);
 export const getSymphonyAccess = defineRpc({
   name: "symphonies.access",
   input: z.object({}).strict(),

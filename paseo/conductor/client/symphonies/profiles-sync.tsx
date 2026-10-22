@@ -11,7 +11,10 @@ import type { ConductorProfile } from "conductor/symphonies/profiles";
 import { Button } from "../ui/controls";
 import { HarnessMark } from "../ui/harness-mark";
 import { StatusNotice } from "./profiles-controls";
-import { identityLabel, profileIdentity } from "./worker-identity";
+import {
+  identityLabel,
+  profileIdentity,
+} from "conductor/podium/worker-identity";
 import type { ProfilesData } from "./profiles";
 
 /**

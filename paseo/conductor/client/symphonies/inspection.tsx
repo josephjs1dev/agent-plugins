@@ -10,16 +10,9 @@ import {
   type Score,
   type StoredSymphony,
   type TaskDefinition,
-  type TaskFinding,
 } from "conductor/symphonies/models";
-import { taskState, type TaskStateKey } from "conductor/symphonies/task-state";
+import { TASK_STATE_LABELS, taskState } from "conductor/symphonies/task-state";
 import { attemptLoop } from "conductor/symphonies/score";
-import {
-  attemptMetrics,
-  type DurationTotals,
-  type TokenSum,
-  type TokenTotals,
-} from "conductor/symphonies/metrics";
 import {
   groupedTaskState,
   hasLoopGroups,
@@ -28,7 +21,12 @@ import {
   loopVerdictLabel,
   unresolvedItemLabel,
   type HistoryLoopGroup,
-} from "./history";
+  attemptState,
+  retryLabel,
+  addressedFindingsLabel,
+  loopVerdictColor,
+} from "conductor/podium/history";
+import { TASK_STATE_COLORS } from "conductor/podium/status";
 import { Button, Disclosure, Label, Notice, rowStyle } from "../ui/controls";
 import { ScoreView } from "./graph";
 import type { ProfilesData } from "./profiles";
@@ -40,8 +38,20 @@ import {
   shortRevision,
   warningLine,
   workerSelection,
-} from "./routing";
+} from "conductor/podium/routing";
 import { DiagnosisPanel, FindingsPanel, InsetPanel } from "./task-report";
+import {
+  attemptTokensLabel,
+  attemptDurationLabel,
+  shortTimestamp,
+  attemptCountLabel,
+} from "conductor/podium/labels";
+import {
+  distinctExpectedOutcome,
+  planAcceptedLine,
+  reopenFindingLines,
+  writeScopeGrownTasks,
+} from "conductor/podium/context";
 
 export function SymphonyInspection({
   view,
@@ -86,8 +96,7 @@ export function SymphonyInspection({
             style={{ color: theme.colors.foregroundMuted, lineHeight: 21 }}
           >
             Source: {context.provenance}
-            {/* The server stores the goal, cut to 4000 characters, as the outcome. */}
-            {context.expectedOutcome !== context.plan.slice(0, 4000).trim() &&
+            {distinctExpectedOutcome(context) !== null &&
               `\nExpected outcome: ${context.expectedOutcome}`}
             {"\n"}Accepted decisions: {context.decisions.join("; ") || "None"}
             {"\n"}Constraints: {context.constraints.join("; ") || "None"}
@@ -161,11 +170,7 @@ function LoopContext({
         {record.reason}
       </Text>
       {record.reopened.map((reopen) => {
-        const findings = reopen.resolved?.length
-          ? reopen.resolved.map(
-              (finding) => `${finding.id}: ${finding.summary}`,
-            )
-          : reopen.findings;
+        const findings = reopenFindingLines(reopen);
         return (
           <View key={reopen.taskId} style={{ gap: 2 }}>
             <Text selectable style={{ ...body, fontWeight: "600" }}>
@@ -249,22 +254,11 @@ function PlanLine({
   theme: PluginTheme;
   symphony: StoredSymphony;
 }) {
-  const first = symphony.revisions[0];
-  if (!first) {
+  const line = planAcceptedLine(symphony);
+  if (!line) {
     return null;
   }
-  const latest = symphony.revisions.at(-1);
-  const grown = latest
-    ? latest.score.tasks.flatMap((task) => {
-        const original = first.score.tasks.find(
-          (entry) => entry.id === task.id,
-        );
-        return original &&
-          task.writes.some((path) => !original.writes.includes(path))
-          ? [task.id]
-          : [];
-      })
-    : [];
+  const grown = writeScopeGrownTasks(symphony);
   return (
     <>
       <Text
@@ -277,7 +271,7 @@ function PlanLine({
           fontVariant: ["tabular-nums"],
         }}
       >
-        {`Plan accepted ${shortTimestamp(first.acceptedAt)} · ${first.reason} · ${taskCountLabel(first.score.tasks.length)}`}
+        {line}
       </Text>
       {grown.length > 0 && (
         <Text
@@ -295,25 +289,6 @@ function PlanLine({
     </>
   );
 }
-
-/** State row color, matching the task card's status dot palette. */
-const HISTORY_STATE_COLORS: Record<TaskStateKey, StateColorName> = {
-  ready: "foregroundMuted",
-  waiting: "foregroundMuted",
-  running: "accent",
-  blocked: "statusWarning",
-  finishing: "statusWarning",
-  "needs-changes": "statusWarning",
-  failed: "statusDanger",
-  completed: "statusSuccess",
-};
-
-type StateColorName =
-  | "foregroundMuted"
-  | "accent"
-  | "statusWarning"
-  | "statusSuccess"
-  | "statusDanger";
 
 const HISTORY_ROW_STYLE = {
   flexDirection: "row",
@@ -423,17 +398,6 @@ function HistoryBody({
       ))}
     </View>
   );
-}
-
-/** Display hue for a loop header's verdict; this file's own state palette. */
-export function loopVerdictColor(group: HistoryLoopGroup): StateColorName {
-  if (group.running) {
-    return "accent";
-  }
-  if (group.verdict === "attention") {
-    return "statusDanger";
-  }
-  return group.verdict === "succeeded" ? "statusSuccess" : "statusWarning";
 }
 
 /**
@@ -549,7 +513,7 @@ function TaskHistory({
       : `history-task-${task.id}`;
   if (!attempts.length) {
     const state = taskState(symphony, task);
-    const color = theme.colors[HISTORY_STATE_COLORS[state.key]];
+    const color = theme.colors[TASK_STATE_COLORS[state.key]];
     return (
       <View
         testID={`history-task-${task.id}`}
@@ -585,7 +549,7 @@ function TaskHistory({
             fontWeight: "500",
           }}
         >
-          {ATTEMPT_STATE_LABELS[state.key]}
+          {TASK_STATE_LABELS[state.key]}
         </Text>
       </View>
     );
@@ -598,7 +562,7 @@ function TaskHistory({
     grouped && lastAttempt
       ? groupedTaskState(lastAttempt)
       : taskState(symphony, task).key;
-  const stateColor = theme.colors[HISTORY_STATE_COLORS[stateKey]];
+  const stateColor = theme.colors[TASK_STATE_COLORS[stateKey]];
   return (
     <View
       testID={testId}
@@ -641,7 +605,7 @@ function TaskHistory({
               fontWeight: "500",
             }}
           >
-            {ATTEMPT_STATE_LABELS[stateKey]}
+            {TASK_STATE_LABELS[stateKey]}
           </Text>
           {retried && (
             <Text
@@ -704,7 +668,7 @@ function AttemptRow({
   openAgent?: (id: string) => void;
 }) {
   const stateKey = attemptState(symphony, attempt);
-  const stateColor = theme.colors[HISTORY_STATE_COLORS[stateKey]];
+  const stateColor = theme.colors[TASK_STATE_COLORS[stateKey]];
   const diagnosis = attempt.report?.diagnosis;
   const reopen = attempt.reopen;
   const [diagnosisOpen, setDiagnosisOpen] = useState(false);
@@ -768,7 +732,7 @@ function AttemptRow({
           fontWeight: "500",
         }}
       >
-        {ATTEMPT_STATE_LABELS[stateKey]}
+        {TASK_STATE_LABELS[stateKey]}
       </Text>
       <Text
         selectable
@@ -996,32 +960,6 @@ function RoutingLines({
 }
 
 /**
- * Labels reopen findings as the attempt's input: the defects an earlier loop
- * reported that this attempt was asked to fix or re-check, not its own result.
- */
-function addressedFindingsLabel(
-  findings: readonly TaskFinding[],
-  attempt: Attempt,
-): string {
-  const blocking = findings.filter(
-    (finding) => finding.severity === "blocking",
-  ).length;
-  const count = `${findings.length} finding${findings.length === 1 ? "" : "s"}`;
-  return `Addresses ${count} from loop ${attemptLoop(attempt) - 1}${
-    blocking ? ` · ${blocking} blocking` : ""
-  }`;
-}
-
-function retryLabel(
-  attempt: Attempt,
-  previousAgentId: string | undefined,
-): string {
-  return previousAgentId === attempt.agentId
-    ? "retry · same agent"
-    : "retry · new agent";
-}
-
-/**
  * Write-scope changes recorded on the attempt: paths the Conductor added for
  * this and later attempts, and paths a task agent's widen granted for the
  * attempt. One muted line per path, each with the reason it was needed.
@@ -1072,160 +1010,4 @@ function ScopeChanges({
       ))}
     </View>
   );
-}
-
-/** "2 attempts" for two tries, otherwise "N attempts". */
-function attemptCountLabel(count: number): string {
-  return `${count} attempts`;
-}
-
-/** Attempt display state for a history row: a completed report with an unsettled agent launch reads as finishing. */
-function attemptState(
-  symphony: StoredSymphony,
-  attempt: Attempt,
-): TaskStateKey {
-  const task = symphony.revisions
-    .at(-1)
-    ?.score.tasks.find((entry) => entry.id === attempt.taskId);
-  if (!task) {
-    return attempt.state;
-  }
-  const state = taskState(symphony, task);
-  // Only keep the display state while it matches the attempt's own outcome;
-  // a later prerequisite-driven reading would mislabel this historical row.
-  if (
-    (state.key === "finishing" && attempt.state === "completed") ||
-    state.key === attempt.state
-  ) {
-    return state.key;
-  }
-  return attempt.state;
-}
-
-const ATTEMPT_STATE_LABELS: Record<TaskStateKey, string> = {
-  ready: "Ready",
-  waiting: "Waiting",
-  running: "Running",
-  blocked: "Blocked",
-  finishing: "Finishing",
-  completed: "Completed",
-  "needs-changes": "Needs changes",
-  failed: "Failed",
-};
-
-/** "1 task" for a single task, otherwise "N tasks". */
-function taskCountLabel(count: number): string {
-  return count === 1 ? "1 task" : `${count} tasks`;
-}
-
-/** Short human timestamp like "Oct 6, 09:12". */
-function shortTimestamp(epochMillis: number): string {
-  const date = new Date(epochMillis);
-  const day = date.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-  });
-  const time = date.toLocaleTimeString(undefined, {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-  return `${day}, ${time}`;
-}
-
-/** "12m" for under an hour, "9h 44m" beyond it, from milliseconds. */
-export function formatDuration(ms: number): string {
-  const minutes = Math.max(0, Math.round(ms / 60000));
-  if (minutes < 60) {
-    return minutes === 1 ? "1m" : `${minutes}m`;
-  }
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-  return rest ? `${hours}h ${rest}m` : `${hours}h`;
-}
-
-/**
- * One attempt's duration: "12m work · 3h blocked" for a tracked attempt,
- * with the blocked span left out when there was none, or the plain wall
- * duration for a record stored before blocked time was tracked.
- */
-export function attemptDurationLabel(attempt: Attempt): string {
-  const metrics = attemptMetrics(attempt, Date.now());
-  if (metrics.legacy) {
-    return formatDuration(metrics.wallMs);
-  }
-  const parts = [`${formatDuration(metrics.workMs)} work`];
-  if (metrics.blockedMs > 0) {
-    parts.push(`${formatDuration(metrics.blockedMs)} blocked`);
-  }
-  return parts.join(" · ");
-}
-
-/** "48k" for 48 000, "942" below a thousand, "1.2m" beyond a million. */
-export function tokenCountLabel(value: number): string {
-  if (value < 1000) {
-    return String(value);
-  }
-  if (value < 1_000_000) {
-    return `${trimFraction(value / 1000)}k`;
-  }
-  return `${trimFraction(value / 1_000_000)}m`;
-}
-
-function trimFraction(value: number): string {
-  const rounded = Math.round(value * 10) / 10;
-  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
-}
-
-/** One summed field, e.g. "48k in"; null when no attempt reported it. */
-function tokenSumLabel(sum: TokenSum, suffix: string): string | null {
-  if (sum.coverage === "unknown" || sum.total === null) {
-    return null;
-  }
-  // A partial sum is a lower bound: attempts without the field may add more.
-  const marker = sum.coverage === "partial" ? "≥ " : "";
-  return `${marker}${tokenCountLabel(sum.total)}${suffix}`;
-}
-
-/**
- * Totals line like "48k in (40k cached) · 6k out". A field no attempt
- * reported is left out, and a record with none reads "—". Cached reads as
- * one figure beside a known input sum, and stands alone — "40k cached" —
- * when only the cache reads are known.
- */
-export function tokenTotalsLabel(tokens: TokenTotals): string {
-  const input = tokenSumLabel(tokens.input, " in");
-  const cached = tokenSumLabel(tokens.cached, " cached");
-  const output = tokenSumLabel(tokens.output, " out");
-  if (input === null && cached === null && output === null) {
-    return "—";
-  }
-  const parts: string[] = [];
-  if (input !== null) {
-    parts.push(cached === null ? input : `${input} (${cached})`);
-  } else if (cached !== null) {
-    parts.push(cached);
-  }
-  if (output !== null) {
-    parts.push(output);
-  }
-  return parts.join(" · ");
-}
-
-/** One attempt's tokens, e.g. "48k in (40k cached) · 6k out" or "—". */
-export function attemptTokensLabel(attempt: Attempt): string {
-  return tokenTotalsLabel(attemptMetrics(attempt, Date.now()).tokens);
-}
-
-/**
- * Summed work time over several attempts. Records stored before blocked
- * time was tracked have no measured work — their work time is wall time —
- * so a sum over only such records reads as wall time instead.
- */
-export function workTotalsLabel(totals: DurationTotals): string {
-  const unit =
-    totals.attemptCount > 0 && totals.legacyAttempts === totals.attemptCount
-      ? "wall"
-      : "work";
-  return `${formatDuration(totals.workMs)} ${unit}`;
 }

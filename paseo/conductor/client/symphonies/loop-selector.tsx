@@ -11,8 +11,11 @@ import {
 import type { PluginTheme } from "@getpaseo/plugin";
 import { Icon } from "@getpaseo/plugin/client/react-native";
 import { Button, Label, rowStyle } from "../ui/controls";
-import { loopVerdictLabel, type HistoryLoopGroup } from "./history";
-import { loopVerdictColor } from "./inspection";
+import {
+  loopVerdictLabel,
+  type HistoryLoopGroup,
+  loopVerdictColor,
+} from "conductor/podium/history";
 
 /**
  * React Native Web 0.21 forwards keyboard and `aria-haspopup` props to the DOM

@@ -2,7 +2,8 @@ import type { SymphonyHost } from "conductor/symphonies/host";
 import { LaunchRejectedError } from "conductor/symphonies/errors";
 import type { AgentIds } from "./agent-ids";
 import { narrowerMode, permissionMode, toAgentSnapshot } from "./mapping";
-import type { BbKv, BbSdk, BbThread } from "./types";
+import { isNotFound, threadReads } from "./threads";
+import type { BbKv, BbSdk } from "./types";
 
 /** Seeded on each task thread so a lost ID binding can be recovered. */
 const AGENT_ID_KEY = "conductorAgentId";
@@ -15,18 +16,6 @@ export interface BbHostOptions {
   ids: AgentIds;
   kv: BbKv;
   pluginId: string;
-}
-
-function isNotFound(error: unknown): boolean {
-  if (!error || typeof error !== "object") {
-    return false;
-  }
-  const { status, code, message } = error as Record<string, unknown>;
-  return (
-    status === 404 ||
-    (typeof code === "string" && /not[_ ]?found/i.test(code)) ||
-    (typeof message === "string" && /not[_ ]?found|\b404\b/i.test(message))
-  );
 }
 
 function providerAndModel(selection: string) {
@@ -56,35 +45,7 @@ export function bbSymphonyHost({
         return null;
       }));
 
-  async function thread(threadId: string): Promise<BbThread | null> {
-    try {
-      return await sdk().threads.get({ threadId });
-    } catch (error) {
-      if (isNotFound(error)) {
-        return null;
-      }
-      throw error;
-    }
-  }
-
-  async function executionOptions(threadId: string) {
-    try {
-      return await sdk().threads.defaultExecutionOptions({ threadId });
-    } catch {
-      return null;
-    }
-  }
-
-  async function environmentPath(environmentId: string | null) {
-    if (!environmentId) {
-      return "";
-    }
-    try {
-      return (await sdk().environments.get({ environmentId })).path ?? "";
-    } catch {
-      return "";
-    }
-  }
+  const { thread, executionOptions, environmentPath } = threadReads(sdk);
 
   /** Finds a task thread whose binding was lost between spawn and bind. */
   async function recover(

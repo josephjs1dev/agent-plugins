@@ -1,5 +1,9 @@
-import type { AgentSnapshot, AgentStatus } from "conductor/agents/agent";
-import type { BbPermissionMode, BbThread } from "./types";
+import type {
+  AgentPermissionRequest,
+  AgentSnapshot,
+  AgentStatus,
+} from "conductor/agents/agent";
+import type { BbPermissionMode, BbThreadRow } from "./types";
 
 const permissionModes = new Set<string>(["accept-edits", "auto", "full"]);
 
@@ -26,7 +30,7 @@ export function permissionMode(
     : null;
 }
 
-function agentStatus(thread: BbThread): AgentStatus {
+function agentStatus(thread: BbThreadRow): AgentStatus {
   if (thread.deletedAt !== null) {
     return "closed";
   }
@@ -51,14 +55,17 @@ export interface ThreadFacts {
   model: string | null;
   permissionMode: string | null;
   reasoningLevel: string | null;
+  /** Pending approvals and questions; empty when they were not read. */
+  pendingPermissions?: AgentPermissionRequest[];
 }
 
 /** Translate one bb thread into the Conductor domain shape. */
 export function toAgentSnapshot(
-  thread: BbThread,
+  thread: BbThreadRow,
   facts: ThreadFacts,
 ): AgentSnapshot {
   const status = agentStatus(thread);
+  const pendingPermissions = facts.pendingPermissions ?? [];
   return {
     id: facts.agentId,
     concertId: thread.environmentId,
@@ -66,7 +73,7 @@ export function toAgentSnapshot(
     provider: thread.providerId,
     status,
     archived: thread.archivedAt !== null || thread.deletedAt !== null,
-    awaitingPermission: false,
+    awaitingPermission: pendingPermissions.length > 0,
     title: thread.title ?? thread.titleFallback ?? null,
     cwd: facts.cwd,
     model: facts.model,
@@ -76,13 +83,16 @@ export function toAgentSnapshot(
     createdAt: new Date(thread.createdAt).toISOString(),
     updatedAt: new Date(thread.updatedAt).toISOString(),
     lastUserMessageAt: null,
-    attentionTimestamp: null,
+    attentionTimestamp:
+      thread.latestAttentionAt === null
+        ? null
+        : new Date(thread.latestAttentionAt).toISOString(),
     lastError: null,
     activeTurn:
       status === "running"
         ? { turnId: `${thread.id}:active`, startedAt: null }
         : null,
     sessionId: null,
-    pendingPermissions: [],
+    pendingPermissions,
   };
 }

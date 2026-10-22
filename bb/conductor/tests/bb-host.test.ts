@@ -6,7 +6,7 @@ import {
 } from "@get-bb/plugin-sdk/testing";
 import { agentIds } from "../server/engine/bb/agent-ids";
 import { bbSymphonyHost } from "../server/engine/bb/symphony-host";
-import { bbVocabulary } from "../server/engine/bb/vocabulary";
+import { bbVocabulary } from "../shared/vocabulary";
 import { translatedHost } from "conductor/agents/vocabulary";
 
 const parent = makeThreadResponse({

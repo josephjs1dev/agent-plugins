@@ -14,7 +14,7 @@ import { annotate, answerRequest, archiveAgent } from "../../shared/agents/rpc";
 import { isSnoozed, needsAttention } from "conductor/agents/attention";
 import type { StoredSymphony } from "conductor/symphonies/models";
 import { PodiumView } from "./view";
-import { PodiumSession } from "./session";
+import { PodiumSession } from "conductor/podium/session";
 import { agentsQueryKey, useAgents } from "../agents/query";
 import { useSymphonies } from "../symphonies/query";
 import { useProfiles } from "../symphonies/profiles-query";

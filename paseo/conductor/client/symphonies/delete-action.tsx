@@ -1,35 +1,16 @@
 import { useState } from "react";
 import { Text, View } from "react-native";
 import type { PluginTheme } from "@getpaseo/plugin";
-import type { StoredSymphony } from "conductor/symphonies/models";
+import {
+  deleteRefusal,
+  type StoredSymphony,
+} from "conductor/symphonies/models";
 import { Button, rowStyle } from "../ui/controls";
 
 interface Props {
   theme: PluginTheme;
   symphony: StoredSymphony;
   deleteSymphony(this: void, symphony: StoredSymphony): Promise<void>;
-}
-
-/**
- * Mirrors the store's remove() rule client-side: only finished symphonies whose
- * attempts have all settled may be deleted. The server enforces the same rule.
- */
-function deletable(symphony: StoredSymphony): boolean {
-  if (symphony.status !== "completed" && symphony.status !== "failed") {
-    return false;
-  }
-  if (
-    symphony.execution.conducting?.phase === "planning" &&
-    symphony.execution.conducting.conductorLaunch === "pending"
-  ) {
-    return false;
-  }
-  return !symphony.execution.attempts.some(
-    (attempt) =>
-      attempt.state === "running" ||
-      attempt.state === "blocked" ||
-      (attempt.launch !== undefined && !attempt.launch.settled),
-  );
 }
 
 export function SymphonyDeleteAction({
@@ -40,7 +21,7 @@ export function SymphonyDeleteAction({
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const canDelete = deletable(symphony);
+  const canDelete = deleteRefusal(symphony) === null;
   const perform = async () => {
     setBusy(true);
     setError(null);

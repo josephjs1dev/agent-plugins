@@ -14,13 +14,13 @@ const exists = (path: string) =>
   );
 const skillPaths = (home: string) =>
   [".claude", ".agents"].map((dir) =>
-    join(home, dir, "skills", "conductor-orchestrate"),
+    join(home, dir, "skills", "paseo-conductor-orchestrate"),
   );
 
 void test("the skill names itself and documents symphonyId", () => {
   assert.match(
     ORCHESTRATE_SKILL,
-    /^---\nname: conductor-orchestrate\ndescription: \S/,
+    /^---\nname: paseo-conductor-orchestrate\ndescription: \S/,
   );
   assert.match(ORCHESTRATE_SKILL, /symphonyId/);
   // Bracketed so this guard against the old names does not itself trip the
@@ -229,7 +229,9 @@ void test("Command Center items install and remove the skill and surface skipped
   await select(0, []);
   await select(1, []);
   await assert.rejects(
-    Promise.resolve(select(0, ["/home/.agents/skills/conductor-orchestrate"])),
+    Promise.resolve(
+      select(0, ["/home/.agents/skills/paseo-conductor-orchestrate"]),
+    ),
     /left existing skills unchanged/,
   );
   assert.deepEqual(calls, [
@@ -237,4 +239,26 @@ void test("Command Center items install and remove the skill and surface skipped
     "skills.remove",
     "skills.install",
   ]);
+});
+
+void test("install removes the retired skill name only where Conductor installed it", async () => {
+  const home = await testDirectory();
+  const [ownedPath, foreignPath] = [".claude", ".agents"].map((dir) =>
+    join(home, dir, "skills", "conductor-orchestrate"),
+  );
+  assert.ok(ownedPath && foreignPath);
+  await mkdir(ownedPath, { recursive: true });
+  await writeFile(join(ownedPath, "SKILL.md"), "old");
+  await writeFile(join(ownedPath, ".paseo-conductor"), "");
+  await mkdir(foreignPath, { recursive: true });
+  await writeFile(join(foreignPath, "SKILL.md"), "mine");
+
+  const result = await installSkills(home);
+
+  assert.equal(await exists(ownedPath), false);
+  assert.equal(await readFile(join(foreignPath, "SKILL.md"), "utf8"), "mine");
+  assert.ok(result.changed.includes(ownedPath));
+  for (const path of skillPaths(home)) {
+    assert.equal(await exists(join(path, "SKILL.md")), true);
+  }
 });

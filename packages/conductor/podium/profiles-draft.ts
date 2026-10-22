@@ -12,12 +12,12 @@ import {
   profileNameSchema,
   type ConductorProfile,
   type ProfileDraft,
-} from "conductor/symphonies/profiles";
+} from "../symphonies/profiles";
 import {
   routingSizeSchema,
   type RoutingRole,
   type RoutingSize,
-} from "conductor/symphonies/routing";
+} from "../symphonies/routing";
 
 /**
  * Whether the profile participates in automatic routing. Routing keeps only
@@ -244,4 +244,64 @@ export function profileDraftFromForm(form: ProfileForm): ProfileDraft {
     );
   }
   return parsed.data;
+}
+
+/**
+ * A provider choice. Models, modes and thinking options belong to one
+ * provider, so choosing a provider clears them.
+ */
+export function withProvider(form: ProfileForm, provider: string): ProfileForm {
+  return { ...form, provider, model: "", modeId: "", thinkingOptionId: "" };
+}
+
+/** A model choice. Thinking options belong to one model, so a new model clears it. */
+export function withModel(form: ProfileForm, model: string): ProfileForm {
+  return model === form.model ? form : { ...form, model, thinkingOptionId: "" };
+}
+
+/** Adds the role when the form lacks it, else removes it. */
+export function toggleRole(form: ProfileForm, role: RoutingRole): ProfileForm {
+  return {
+    ...form,
+    roles: form.roles.includes(role)
+      ? form.roles.filter((held) => held !== role)
+      : [...form.roles, role],
+  };
+}
+
+/**
+ * The form after a successful save: it carries the store's id and the
+ * trimmed values the store kept, so Save disables until the next change.
+ */
+export function savedProfileForm(
+  form: ProfileForm,
+  draft: ProfileDraft,
+  savedId: string | undefined,
+): ProfileForm {
+  return {
+    ...form,
+    ...(savedId ? { id: savedId } : {}),
+    name: draft.name,
+    notes: draft.notes,
+    provider: draft.provider,
+    model: draft.model ?? "",
+    thinkingOptionId: draft.thinkingOptionId ?? "",
+    modeId: draft.modeId ?? "",
+    instructions: draft.instructions,
+  };
+}
+
+/**
+ * The control a routing fix focuses: a role chip while the profile has no
+ * role, otherwise the size control, on the chosen size when one is set.
+ */
+export type RoutingFocusTarget =
+  | { kind: "role" }
+  | { kind: "size"; size: RoutingSize | undefined };
+
+export function routingFocusTarget(form: ProfileForm): RoutingFocusTarget {
+  if (form.roles.length === 0) {
+    return { kind: "role" };
+  }
+  return { kind: "size", size: profileSizeValue(form) };
 }

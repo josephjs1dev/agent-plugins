@@ -1,10 +1,6 @@
-import type {
-  Decision,
-  AgentItem,
-  AnswerResult,
-} from "conductor/agents/models";
-import type { Filter } from "conductor/agents/attention";
-import type { SymphonySelection } from "../symphonies/selection";
+import type { Decision, AgentItem, AnswerResult } from "../agents/models";
+import type { Filter } from "../agents/attention";
+import type { SymphonySelection } from "./selection";
 
 export interface ViewState {
   section: "agents" | "symphonies" | "profiles";

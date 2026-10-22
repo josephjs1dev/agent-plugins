@@ -6,27 +6,16 @@ import type {
   PluginComposerPillContribution,
 } from "@getpaseo/plugin/client";
 import { listSymphonies } from "../../shared/symphonies/rpc";
-import type {
-  StoredSymphony,
-  SymphonyListEntry,
-} from "conductor/symphonies/models";
-import { symphonyStatusLabel } from "conductor/symphonies/models";
+import type { SymphonyListEntry } from "conductor/symphonies/models";
 import { SymphoniesPillContent } from "./pills-popover";
-
-/** A symphony is ongoing while it plans, waits, runs, or needs attention. */
-const ONGOING_STATUSES: ReadonlySet<StoredSymphony["status"]> = new Set([
-  "planning",
-  "ready",
-  "running",
-  "blocked",
-]);
+import {
+  ongoingGroups,
+  ongoingIcon,
+  ongoingLabel,
+} from "conductor/podium/ongoing";
 
 const PILL_ID = "symphonies";
 const PILL_TITLE = "Ongoing symphonies";
-/** Host Lucide names; they mirror `client/ui/status.tsx` symphony icons. */
-const PILL_ICON = "Activity";
-const PILL_ATTENTION_ICON = "CirclePause";
-const PILL_ATTENTION_LABEL = symphonyStatusLabel("blocked");
 const DEFAULT_DEBOUNCE_MS = 500;
 const DEFAULT_FALLBACK_MS = 30_000;
 
@@ -103,12 +92,6 @@ interface SymphoniesPill {
   icon: string;
 }
 
-interface OngoingGroup {
-  /** The first group member's concert; the pill placement rides on it. */
-  readonly workspaceId: string;
-  readonly symphonies: SymphonyListEntry[];
-}
-
 const defaultTimers: SymphonyPillTimers = {
   set(callback, ms) {
     return setTimeout(callback, ms);
@@ -155,56 +138,6 @@ function updateAgentIds(agentIds: Set<string>, message: unknown): boolean {
   return false;
 }
 
-/** Label for one agent's ongoing symphonies: a count, attention first. */
-export function symphonyPillLabel(
-  symphonies: readonly SymphonyListEntry[],
-): string {
-  const only = symphonies[0];
-  if (symphonies.length === 1 && only) {
-    return `Symphony ${only.completedTasks}/${only.taskCount}`;
-  }
-  return `${symphonies.length} symphonies`;
-}
-
-function pillLabel(symphonies: readonly SymphonyListEntry[]): string {
-  const blocked = pillIcon(symphonies) === PILL_ATTENTION_ICON;
-  return blocked ? PILL_ATTENTION_LABEL : symphonyPillLabel(symphonies);
-}
-
-function pillIcon(symphonies: readonly SymphonyListEntry[]): string {
-  return symphonies.some((symphony) => symphony.status === "blocked")
-    ? PILL_ATTENTION_ICON
-    : PILL_ICON;
-}
-
-/** Groups ongoing symphonies by Conductor agent, in list order. */
-function ongoingGroups(
-  symphonies: readonly SymphonyListEntry[],
-  agentIds: ReadonlySet<string>,
-): Map<string, OngoingGroup> {
-  const groups = new Map<string, OngoingGroup>();
-  for (const symphony of symphonies) {
-    if (!ONGOING_STATUSES.has(symphony.status)) {
-      continue;
-    }
-    const agentId = symphony.source.agentId;
-    // Symphonies without a Conductor agent get no pill anywhere.
-    if (agentId === null || !agentIds.has(agentId)) {
-      continue;
-    }
-    const group = groups.get(agentId);
-    if (group) {
-      group.symphonies.push(symphony);
-    } else {
-      groups.set(agentId, {
-        workspaceId: symphony.source.concertId,
-        symphonies: [symphony],
-      });
-    }
-  }
-  return groups;
-}
-
 /**
  * Registers one composer pill per Conductor agent that has ongoing
  * symphonies, refreshed from `symphonies.list`: once at registration, again
@@ -243,8 +176,8 @@ export function registerSymphonyPills(
     }
     const groups = ongoingGroups(latest, agentIds);
     for (const [agentId, group] of groups) {
-      const label = pillLabel(group.symphonies);
-      const icon = pillIcon(group.symphonies);
+      const label = ongoingLabel(group.symphonies);
+      const icon = ongoingIcon(group.symphonies);
       let pill = pills.get(agentId);
       if (pill && pill.workspaceId !== group.workspaceId) {
         // The host keys a pill by workspace and agent, so a moved group must

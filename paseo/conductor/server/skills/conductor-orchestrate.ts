@@ -1,6 +1,6 @@
 // Embedded so Git and npm installs need no extra files or dev dependencies.
 export const ORCHESTRATE_SKILL = `---
-name: conductor-orchestrate
+name: paseo-conductor-orchestrate
 description: Turn an approved plan or request into a Paseo Conductor symphony from this session. Split it into tasks, choose a configured profile or model per task (implement, explore, plan, review), dispatch task agents, track their reports, and finish with a summary. Use when the user says "orchestrate", "conductor", "symphony", "split this into tasks", "dispatch agents", "run this plan with agents", or asks to parallelize work across agents. Requires the Paseo Conductor plugin. Do not use it to create a dedicated Conductor agent.
 ---
 

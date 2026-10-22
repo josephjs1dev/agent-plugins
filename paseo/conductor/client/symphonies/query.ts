@@ -6,7 +6,7 @@ import {
   listSymphonies,
   readSymphony,
 } from "../../shared/symphonies/rpc";
-import type { SymphonySelection } from "./selection";
+import type { SymphonySelection } from "conductor/podium/selection";
 
 export function useSymphonies(
   hostId: string,

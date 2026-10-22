@@ -1,12 +1,17 @@
 import type { BbPluginApi } from "@get-bb/plugin-sdk";
 import { join } from "node:path";
 import { conductorHome } from "conductor/home";
+import { fileStore } from "conductor/agents/store";
+import { turnJournal } from "conductor/agents/turns";
 import { translatedHost } from "conductor/agents/vocabulary";
 import { agentIds } from "./server/engine/bb/agent-ids";
+import { bbAgentsHost } from "./server/engine/bb/agents-host";
+import { providerCatalog } from "./server/engine/bb/provider-catalog";
 import { bbSymphonyHost } from "./server/engine/bb/symphony-host";
-import { bbVocabulary } from "./server/engine/bb/vocabulary";
+import { bbVocabulary } from "./shared/vocabulary";
 import { registerCli } from "./server/entrypoints/cli";
 import { observeThreads } from "./server/entrypoints/events";
+import { registerPodium } from "./server/entrypoints/podium";
 import { symphonyService } from "./server/entrypoints/symphonies";
 import { registerTools } from "./server/entrypoints/tools";
 
@@ -40,7 +45,17 @@ export default function plugin(bb: BbPluginApi): void {
         `Conductor could not mark interrupted symphonies: ${String(error)}`,
       );
     });
-  registerTools(bb, service, ids, ready);
+  const changed = registerPodium(bb, {
+    agents: bbAgentsHost({ sdk: () => bb.sdk, ids, vocabulary: bbVocabulary }),
+    // Podium preferences and turn outcomes name bb threads, so they stay with
+    // bb's symphonies.
+    store: fileStore(directory),
+    turns: turnJournal(join(directory, "turns")),
+    ids,
+    service,
+    providers: () => providerCatalog(bb.sdk, bbVocabulary),
+  });
+  registerTools(bb, service, ids, ready, changed);
   observeThreads(bb, service, ids, ready);
   registerCli(bb, service);
   bb.background.service("reconcile", {

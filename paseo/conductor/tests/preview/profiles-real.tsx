@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PluginTheme } from "@getpaseo/plugin";
-import { PodiumSession } from "../../client/podium/session";
+import { PodiumSession } from "conductor/podium/session";
 import { ProfileBrowser } from "../../client/symphonies/profiles";
 import { useProfiles } from "../../client/symphonies/profiles-query";
 import { light } from "./fixtures";

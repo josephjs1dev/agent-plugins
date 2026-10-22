@@ -1,9 +1,13 @@
 import { ScrollView, TextInput, View } from "react-native";
 import type { PluginTheme } from "@getpaseo/plugin";
 import { Icon } from "@getpaseo/plugin/client/react-native";
-import type { PodiumSession, ViewState } from "../podium/session";
+import type { PodiumSession, ViewState } from "conductor/podium/session";
 import { Button } from "../ui/controls";
-import { visibleSymphonies, type SymphoniesData } from "./list";
+import {
+  SYMPHONY_FILTERS,
+  visibleSymphonies,
+} from "conductor/podium/symphony-list";
+import type { SymphoniesData } from "./list";
 
 export function SymphonyToolbar({
   theme,
@@ -34,14 +38,7 @@ export function SymphonyToolbar({
         }}
         contentContainerStyle={{ gap: 6 }}
       >
-        {(
-          [
-            { id: "blocked", label: "Needs attention", icon: "Bell" },
-            { id: "active", label: "Active", icon: "Activity" },
-            { id: "completed", label: "Complete", icon: "CircleCheck" },
-            { id: "all", label: "All", icon: "ListChecks" },
-          ] as const
-        ).map(({ id, label, icon }) => (
+        {SYMPHONY_FILTERS.map(({ id, label, icon }) => (
           <Button
             key={id}
             theme={theme}

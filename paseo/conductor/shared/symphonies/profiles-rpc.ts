@@ -1,15 +1,13 @@
 import { defineRpc } from "@getpaseo/plugin";
-import { z } from "zod";
 import {
-  profileIdSchema,
-  profileOperationSchema,
-  profilesStateSchema,
-  revisionSchema,
-  saveProfilesResultSchema,
-} from "conductor/symphonies/profiles";
+  listProfileProvidersDefinition,
+  listProfilesDefinition,
+  saveProfilesDefinition,
+} from "conductor/symphonies/profiles-rpc";
+import { z } from "zod";
+import { profileIdSchema, revisionSchema } from "conductor/symphonies/profiles";
 import {
   importProfilesResultSchema,
-  providerCatalogSchema,
   syncPreviewSchema,
   syncProfilesResultSchema,
 } from "conductor/symphonies/profiles-contracts";
@@ -17,30 +15,13 @@ import {
 export * from "conductor/symphonies/profiles-contracts";
 
 /** The Conductor worker profiles, their mode, revisions and diagnostics. */
-export const listProfiles = defineRpc({
-  name: "profiles.list",
-  input: z.object({}).strict(),
-  output: profilesStateSchema,
-});
+export const listProfiles = defineRpc(listProfilesDefinition);
 
 /** Creates, replaces, deletes a profile, or sets the global routing mode. */
-export const saveProfiles = defineRpc({
-  name: "profiles.save",
-  input: z
-    .object({
-      expectedRevision: revisionSchema,
-      operation: profileOperationSchema,
-    })
-    .strict(),
-  output: saveProfilesResultSchema,
-});
+export const saveProfiles = defineRpc(saveProfilesDefinition);
 
 /** The available providers, models, thinking options and permission modes. */
-export const listProfileProviders = defineRpc({
-  name: "profiles.providers",
-  input: z.object({}).strict(),
-  output: providerCatalogSchema,
-});
+export const listProfileProviders = defineRpc(listProfileProvidersDefinition);
 
 /** Copies Paseo agent profiles once into unclassified Conductor profiles. */
 export const importPaseoProfiles = defineRpc({

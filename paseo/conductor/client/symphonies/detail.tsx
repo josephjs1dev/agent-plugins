@@ -2,32 +2,34 @@ import { useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 import type { PluginTheme } from "@getpaseo/plugin";
 import { Icon } from "@getpaseo/plugin/client/react-native";
-import {
-  SYMPHONY_LIMITS,
-  latestAttempt,
-  type SymphonyContext,
-  type StoredSymphony,
+import type {
+  SymphonyContext,
+  StoredSymphony,
 } from "conductor/symphonies/models";
-import { currentLoop } from "conductor/symphonies/score";
 import { symphonyMetrics } from "conductor/symphonies/metrics";
-import { taskState } from "conductor/symphonies/task-state";
-import { StatusMarker, symphonyStatusPresentation } from "../ui/status";
+import { StatusMarker } from "../ui/status";
+import { symphonyStatusPresentation } from "conductor/podium/status";
 import { SymphonyProgress } from "../ui/progress";
 import {
   historyLoops,
   scoreAtLoop,
   symphonyAtLoop,
   unresolvedItemLabel,
-} from "./history";
+} from "conductor/podium/history";
 import { LoopSelector } from "./loop-selector";
 import { Button, Label, Notice } from "../ui/controls";
 import { cardSurface } from "../ui/card";
 import { SymphonyDeleteAction } from "./delete-action";
 import {
-  formatDuration,
-  tokenTotalsLabel,
-  workTotalsLabel,
-} from "./inspection";
+  DETAIL_VIEWS,
+  DETAIL_VIEW_ICONS,
+  detailProgress,
+  detailViewLabel,
+  loopNote as symphonyLoopNote,
+  metricsLine,
+  resultLabel as symphonyResultLabel,
+  type DetailView,
+} from "conductor/podium/symphony-detail";
 import { SymphonyInspection } from "./inspection";
 import type { ProfilesData } from "./profiles";
 import {
@@ -35,13 +37,7 @@ import {
   type TaskDisclosures,
   type TaskDisclosure,
 } from "./task-card";
-
-const TAB_ICONS = {
-  tasks: "ListChecks",
-  graph: "GitBranch",
-  context: "FileText",
-  history: "History",
-} as const;
+import { previewLines } from "conductor/podium/report";
 
 export function SymphonyDetail({
   theme,
@@ -63,9 +59,7 @@ export function SymphonyDetail({
   /** Worker profiles and provider catalog, passed to the graph tab. */
   profiles?: ProfilesData;
 }) {
-  const [view, setView] = useState<"tasks" | "graph" | "context" | "history">(
-    "tasks",
-  );
+  const [view, setView] = useState<DetailView>("tasks");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   // null follows the latest loop as new loops start.
   const [pickedLoop, setPickedLoop] = useState<number | null>(null);
@@ -80,34 +74,12 @@ export function SymphonyDetail({
   const loopScore = multiLoop ? scoreAtLoop(symphony, shownLoop) : score;
   const conducting = symphony.execution.conducting;
   const planning = conducting?.phase === "planning";
-  const completed = score.tasks.filter(
-    (task) => latestAttempt(symphony, task.id)?.state === "completed",
-  ).length;
-  /**
-   * Header segments mirror the reported completion the count names: a slice
-   * fills only when that task's latest attempt reported complete, in score
-   * order. A settling agent still reports complete; it is not inertly done,
-   * but the list counts it and the header must agree with the list.
-   */
-  const segments = score.tasks.map((task) => ({
-    id: task.id,
-    title: task.title,
-    state: taskState(symphony, task).key,
-    reportedComplete: latestAttempt(symphony, task.id)?.state === "completed",
-  }));
-  const resultLabel =
-    symphony.execution.origin === "conducted"
-      ? "RESULT · REPORTED BY THE CONDUCTOR AGENT"
-      : "RESULT · REPORTED BY THE SOURCE AGENT";
+  const { completed, segments } = detailProgress(symphony);
+  const resultLabel = symphonyResultLabel(symphony);
   // Whole-symphony figures: elapsed from creation to finish (or now), the
   // summed work of every attempt, and their tokens.
   const metrics = symphonyMetrics(symphony, Date.now());
-  // A conducted symphony shows its loop against the budget chosen at
-  // `orchestrate`; records without one use the default budget.
-  const loopNote =
-    conducting && !planning
-      ? ` · Loop ${currentLoop(symphony)} of ${conducting.maxLoops ?? SYMPHONY_LIMITS.defaultLoops}`
-      : "";
+  const loopNote = symphonyLoopNote(symphony);
   const toggle = (key: string) =>
     setExpanded((prior) => ({ ...prior, [key]: !prior[key] }));
   const isOpen = (key: string) => Boolean(expanded[key]);
@@ -177,14 +149,7 @@ export function SymphonyDetail({
               fontVariant: ["tabular-nums"],
             }}
           >
-            {[
-              `${formatDuration(metrics.elapsedMs)} elapsed`,
-              workTotalsLabel(metrics),
-              ...(metrics.blockedMs > 0
-                ? [`${formatDuration(metrics.blockedMs)} blocked`]
-                : []),
-              tokenTotalsLabel(metrics.tokens),
-            ].join(" · ")}
+            {metricsLine(metrics)}
           </Text>
         )}
       </View>
@@ -246,13 +211,13 @@ export function SymphonyDetail({
           style={{ flexShrink: 1, minWidth: 0 }}
           contentContainerStyle={{ gap: 4 }}
         >
-          {(["tasks", "graph", "context", "history"] as const).map((entry) => (
+          {DETAIL_VIEWS.map((entry) => (
             <Button
               key={entry}
               theme={theme}
               variant="tab"
-              label={entry.charAt(0).toUpperCase() + entry.slice(1)}
-              icon={TAB_ICONS[entry]}
+              label={detailViewLabel(entry)}
+              icon={DETAIL_VIEW_ICONS[entry]}
               selected={view === entry}
               onPress={() => setView(entry)}
             />
@@ -336,16 +301,6 @@ export function SymphonyDetail({
       )}
     </ScrollView>
   );
-}
-
-const PREVIEW_LINES = 3;
-
-/** First up-to-three nonempty preview lines of summary prose. */
-function previewLines(value: string): string[] {
-  return value
-    .split("\n")
-    .filter((line) => line.trim().length > 0)
-    .slice(0, PREVIEW_LINES);
 }
 
 /**

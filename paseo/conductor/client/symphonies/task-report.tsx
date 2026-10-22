@@ -3,7 +3,6 @@ import { Pressable, Text, View } from "react-native";
 import type { PluginTheme } from "@getpaseo/plugin";
 import type {
   Attempt,
-  FailureNeed,
   TaskDiagnosis,
   TaskFinding,
   TaskReport,
@@ -15,7 +14,16 @@ import {
   shortRevision,
   warningLine,
   workerSelection,
-} from "./routing";
+} from "conductor/podium/routing";
+import {
+  FINDING_SEVERITY,
+  CHECK_STATUS,
+  NEED_ACTIONS,
+  blockingFindingCount,
+  checksLabel as reportChecksLabel,
+  findingsLabel,
+  sortedFindings,
+} from "conductor/podium/report";
 
 /** Readable line length for task prose in cards and report panels. */
 export const PROSE_WIDTH = 760;
@@ -28,13 +36,6 @@ export const PROSE_WIDTH = 760;
 export interface ReportRouting {
   readonly launch: NonNullable<Attempt["launch"]>;
 }
-
-export type StateColor =
-  | "foregroundMuted"
-  | "accent"
-  | "statusWarning"
-  | "statusSuccess"
-  | "statusDanger";
 
 /**
  * Card footer: a hairline divider, the Evidence/Checks toggle row (at most one
@@ -66,16 +67,9 @@ export function ReportFooter({
   const failedChecks = report.checks.filter(
     (check) => check.status === "failed",
   ).length;
-  const passedChecks = report.checks.filter(
-    (check) => check.status === "passed",
-  ).length;
-  const checksLabel = `Checks ${passedChecks}/${report.checks.length} passed${
-    failedChecks ? ` · ${failedChecks} failed` : ""
-  }`;
+  const checksLabel = reportChecksLabel(report.checks);
   const findings = report.findings ?? [];
-  const blockingFindings = findings.filter(
-    (finding) => finding.severity === "blocking",
-  ).length;
+  const blockingFindings = blockingFindingCount(findings);
   const [diagnosisOpen, setDiagnosisOpen] = useState(false);
   const [findingsOpen, setFindingsOpen] = useState(false);
   const [routingOpen, setRoutingOpen] = useState(false);
@@ -144,9 +138,7 @@ export function ReportFooter({
         {findings.length > 0 && (
           <FooterToggle
             theme={theme}
-            label={`Findings ${findings.length}${
-              blockingFindings ? ` · ${blockingFindings} blocking` : ""
-            }`}
+            label={findingsLabel(findings)}
             danger={blockingFindings > 0}
             expanded={findingsOpen}
             onToggle={() => setFindingsOpen((open) => !open)}
@@ -183,15 +175,6 @@ export function ReportFooter({
     </View>
   );
 }
-
-/** What each structured failure `need` value asks the Conductor to do. */
-const NEED_ACTIONS: Record<FailureNeed, string> = {
-  scope: "Needs wider write scope",
-  input: "Needs user input",
-  model: "Needs a different profile or model",
-  harness: "Needs a harness, environment or permission fix",
-  none: "Needs a direction to continue",
-};
 
 /**
  * A failed report's task agent self-diagnosis: fix rounds tried, the suspected
@@ -559,16 +542,8 @@ function ChecksPanel({
   theme: PluginTheme;
   checks: TaskReport["checks"];
 }) {
-  const META: Record<
-    TaskReport["checks"][number]["status"],
-    { glyph: string; word: string; color: StateColor }
-  > = {
-    passed: { glyph: "✓", word: "Passed", color: "statusSuccess" },
-    failed: { glyph: "✕", word: "Failed", color: "statusDanger" },
-    "not-run": { glyph: "–", word: "Not run", color: "foregroundMuted" },
-  };
   return checks.map((check, index) => {
-    const meta = META[check.status];
+    const meta = CHECK_STATUS[check.status];
     return (
       <View
         key={`${check.name}-${index}`}
@@ -618,15 +593,6 @@ function ChecksPanel({
   });
 }
 
-/** Colors and glyphs per finding severity; blocking always leads a panel. */
-const FINDING_SEVERITY: Record<
-  TaskFinding["severity"],
-  { glyph: string; word: string; color: StateColor }
-> = {
-  blocking: { glyph: "✕", word: "Blocking", color: "statusDanger" },
-  minor: { glyph: "•", word: "Minor", color: "statusWarning" },
-};
-
 /**
  * Findings sorted blocking first, then one disclosure row per finding: the
  * severity word in its status color, the owning task (collapsed findings omit
@@ -661,70 +627,64 @@ export function FindingsPanel({
     lineHeight: 18,
     maxWidth: PROSE_WIDTH,
   } as const;
-  return [...findings]
-    .sort(
-      (a, b) =>
-        (a.severity === "blocking" ? 0 : 1) -
-        (b.severity === "blocking" ? 0 : 1),
-    )
-    .map((finding, index) => {
-      const meta = severity(finding.severity);
-      return (
+  return sortedFindings(findings).map((finding, index) => {
+    const meta = severity(finding.severity);
+    return (
+      <View
+        key={`${finding.id}-${index}`}
+        style={{
+          paddingVertical: 6,
+          borderTopWidth: index > 0 ? 1 : 0,
+          borderTopColor: theme.colors.border,
+          gap: 2,
+        }}
+      >
         <View
-          key={`${finding.id}-${index}`}
           style={{
-            paddingVertical: 6,
-            borderTopWidth: index > 0 ? 1 : 0,
-            borderTopColor: theme.colors.border,
-            gap: 2,
+            flexDirection: "row",
+            flexWrap: "wrap",
+            alignItems: "center",
+            gap: 6,
           }}
         >
-          <View
+          <Text
+            selectable
             style={{
-              flexDirection: "row",
-              flexWrap: "wrap",
-              alignItems: "center",
-              gap: 6,
+              color: theme.colors[meta.color],
+              fontSize: 13,
+              lineHeight: 20,
+              fontWeight: "600",
             }}
           >
+            {`${meta.glyph} ${meta.word} · ${finding.id}`}
+          </Text>
+          {finding.taskId && (
             <Text
               selectable
               style={{
-                color: theme.colors[meta.color],
-                fontSize: 13,
-                lineHeight: 20,
-                fontWeight: "600",
+                color: theme.colors.foregroundMuted,
+                fontSize: 12,
+                lineHeight: 18,
               }}
             >
-              {`${meta.glyph} ${meta.word} · ${finding.id}`}
-            </Text>
-            {finding.taskId && (
-              <Text
-                selectable
-                style={{
-                  color: theme.colors.foregroundMuted,
-                  fontSize: 12,
-                  lineHeight: 18,
-                }}
-              >
-                {`on ${finding.taskId}`}
-              </Text>
-            )}
-          </View>
-          {finding.paths.length > 0 && (
-            <Text selectable style={muted} {...clamp(1)}>
-              {finding.paths.join(", ")}
-            </Text>
-          )}
-          <Text selectable style={line} {...clamp(3)}>
-            {finding.summary}
-          </Text>
-          {finding.suggestedFix && (
-            <Text selectable style={muted} {...clamp(2)}>
-              {`Suggested fix: ${finding.suggestedFix}`}
+              {`on ${finding.taskId}`}
             </Text>
           )}
         </View>
-      );
-    });
+        {finding.paths.length > 0 && (
+          <Text selectable style={muted} {...clamp(1)}>
+            {finding.paths.join(", ")}
+          </Text>
+        )}
+        <Text selectable style={line} {...clamp(3)}>
+          {finding.summary}
+        </Text>
+        {finding.suggestedFix && (
+          <Text selectable style={muted} {...clamp(2)}>
+            {`Suggested fix: ${finding.suggestedFix}`}
+          </Text>
+        )}
+      </View>
+    );
+  });
 }

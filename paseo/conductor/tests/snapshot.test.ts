@@ -11,7 +11,7 @@ import {
   runtime,
   testDirectory,
 } from "./paseo-fixtures";
-import { PodiumSession } from "../client/podium/session";
+import { PodiumSession } from "conductor/podium/session";
 
 async function store() {
   return fileStore(await testDirectory());

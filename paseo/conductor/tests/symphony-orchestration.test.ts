@@ -46,7 +46,7 @@ import {
   type StoredSymphony,
 } from "conductor/symphonies/models";
 import { currentLoop, effectiveTask } from "conductor/symphonies/score";
-import { historyLoops } from "../client/symphonies/history";
+import { historyLoops } from "conductor/podium/history";
 import { placement } from "../../../packages/conductor/tests/symphony-fixtures";
 import { testDirectory } from "./paseo-fixtures";
 

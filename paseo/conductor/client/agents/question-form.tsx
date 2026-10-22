@@ -2,6 +2,11 @@ import { Pressable, Text, TextInput, View } from "react-native";
 import type { PluginTheme } from "@getpaseo/plugin";
 import type { Decision, RequestForm } from "conductor/agents/models";
 import { Button, Label, rowStyle } from "../ui/controls";
+import {
+  blankAnswers,
+  toggleChoice,
+  writeAnswer,
+} from "conductor/podium/agents-view";
 
 interface Props {
   form: RequestForm;
@@ -53,9 +58,7 @@ export function QuestionForm({
     );
   }
   const answers =
-    draft?.kind === "answers"
-      ? draft.answers
-      : form.questions.map(() => ({ selected: [], text: "" }));
+    draft?.kind === "answers" ? draft.answers : blankAnswers(form);
   return (
     <View style={{ gap: 28 }}>
       {form.questions.map((question, index) => {
@@ -99,18 +102,9 @@ export function QuestionForm({
                   accessibilityLabel={option.label}
                   accessibilityState={{ checked: selected, disabled }}
                   disabled={disabled}
-                  onPress={() => {
-                    let choices = selected ? [] : [choice];
-                    if (question.multiSelect) {
-                      choices = selected
-                        ? answer.selected.filter((item) => item !== choice)
-                        : [...answer.selected, choice];
-                    }
-                    update({
-                      selected: choices,
-                      text: question.multiSelect ? answer.text : "",
-                    });
-                  }}
+                  onPress={() =>
+                    update(toggleChoice(answer, choice, question.multiSelect))
+                  }
                   style={{
                     padding: 14,
                     borderRadius: 8,
@@ -163,10 +157,7 @@ export function QuestionForm({
                   maxLength={4000}
                   value={answer.text}
                   onChangeText={(text) =>
-                    update({
-                      text,
-                      selected: question.multiSelect ? answer.selected : [],
-                    })
+                    update(writeAnswer(answer, text, question.multiSelect))
                   }
                   placeholder="Write a response…"
                   placeholderTextColor={theme.colors.foregroundMuted}
