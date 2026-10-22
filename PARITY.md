@@ -27,7 +27,7 @@ profiles to import or sync.
 
 | Capability                                                   | Core         | Paseo                                                          | bb                                                |
 | ------------------------------------------------------------ | ------------ | -------------------------------------------------------------- | ------------------------------------------------- |
-| Data in `$CONDUCTOR_HOME` (default `~/.conductor`)           | done         | done                                                           | done: symphonies in `bb/`, shared profiles        |
+| Data in `$CONDUCTOR_HOME` (default `~/.conductor`)           | done         | done: symphonies in `paseo/`, shared profiles                  | done: symphonies in `bb/`, shared profiles        |
 | Legacy data directory adoption                               | done         | done: `$PASEO_HOME/plugin-data/conductor`                      | n/a                                               |
 | Agent directory and snapshots                                | done         | done                                                           | done: threads; model read on inspection only      |
 | Answer questions and permission requests                     | done         | done                                                           | done: bb approvals and questions                  |

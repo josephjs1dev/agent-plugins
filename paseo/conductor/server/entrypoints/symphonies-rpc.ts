@@ -32,10 +32,12 @@ async function guarded<T>(action: () => Promise<T>): Promise<T> {
 export function registerSymphonies(
   server: PluginServerContext,
   directory: string,
+  home: string,
 ) {
   const connection = paseoConnection();
   const service = symphonyService({
     directory,
+    home,
     host: () => paseoSymphonyHost(connection.require()),
     paseoProfilesPort: () => paseoProfilesPort(connection.require()),
     connected: () => connection.available,

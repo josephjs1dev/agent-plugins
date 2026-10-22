@@ -18,6 +18,8 @@ import { symphonyAck } from "conductor/commands/ack";
 
 export interface SymphonyServiceOptions {
   directory: string;
+  /** The Conductor home; its worker profile store is shared across hosts. */
+  home: string;
   /** Throws a SymphonyError while no daemon connection is known. */
   host: () => SymphonyHost;
   /** Throws a SymphonyError while no daemon connection is known. */
@@ -30,6 +32,7 @@ export interface SymphonyServiceOptions {
 /** Owns symphony storage, execution, the agent command server, and reconciliation. */
 export function symphonyService({
   directory,
+  home,
   host,
   paseoProfilesPort,
   connected,
@@ -61,7 +64,7 @@ export function symphonyService({
     },
   });
   const profiles = profileStoreSource(
-    join(directory, PROFILES_FILE),
+    join(home, PROFILES_FILE),
     () => host().profiles(),
     paseoProfilesPort,
   );

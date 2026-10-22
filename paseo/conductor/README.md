@@ -555,9 +555,9 @@ controls. Sending an answer does not confirm that work resumed.
   request, has child agents, or the directory is too incomplete to check safely.
 
 Snooze affects the queue; Paseo controls notifications. Reminders, snoozes,
-receipts, and turn outcomes persist under `$CONDUCTOR_HOME` (default
-`~/.conductor`). On first start Conductor moves an existing
-`$PASEO_HOME/plugin-data/conductor` there and leaves a symlink at the old path. Idle/closed status or a turn outcome
+receipts, and turn outcomes persist under `$CONDUCTOR_HOME/paseo` (default
+`~/.conductor/paseo`). On first start Conductor moves an existing
+`$PASEO_HOME/plugin-data/conductor` to `$CONDUCTOR_HOME` and leaves a symlink at the old path. Idle/closed status or a turn outcome
 does not establish task completion; review the output and required checks.
 
 ## Requirements
@@ -702,6 +702,11 @@ Every host stores Conductor data in `$CONDUCTOR_HOME` (default `~/.conductor`).
 `adoptLegacyHome(target, legacy)` moves a host's earlier directory there once.
 It leaves a symlink at the old path, so running task agents keep reaching their
 command launcher. If the move fails, Conductor keeps the legacy directory.
+Each host keeps its symphonies in its own subdirectory, `paseo/` or `bb/`,
+because each host's reconciler would treat the other host's agents as missing.
+The worker profile store, `$CONDUCTOR_HOME/profiles.json`, is shared.
+`adoptHostDirectory(home, target)` moves Paseo's entries from an earlier
+layout out of the home once. It leaves symlinks at the launcher paths.
 
 Paseo-only code: `client/`, `index.*`, `server/engine/paseo/`,
 `server/entrypoints/`, `server/skills/`, the `defineRpc` wrappers in
@@ -735,7 +740,7 @@ provider and creates temporary workspaces/agents. These are separate from `check
 ### Symphony storage and recovery
 
 Symphony records and immutable goal context are stored under
-`~/.conductor/symphonies/` and `artifacts/`. Definitions, attempts,
+`~/.conductor/paseo/symphonies/` and `artifacts/`. Definitions, attempts,
 blockers, report hashes, and final summaries are stored together. After upgrading,
 delete `runs/`, `run-write-lock`, and `artifacts/` under the Conductor data
 directory, then run **Install conductor skills** again. Upgrade while no Podium answer is being sent: request keys changed, so a

@@ -67,7 +67,7 @@ Conductor's environment. The `bb-conductor-orchestrate` skill guides the thread.
 ## Data directory
 
 Symphonies live in `$CONDUCTOR_HOME/bb` (default `~/.conductor/bb`). The
-directory is separate from Paseo's symphonies, because each host's reconciler
+directory is separate from Paseo's symphonies in `$CONDUCTOR_HOME/paseo`, because each host's reconciler
 would treat the other host's agents as missing. Podium preferences and turn
 outcomes also live there. The worker profile store,
 `$CONDUCTOR_HOME/profiles.json`, is shared with Paseo.
