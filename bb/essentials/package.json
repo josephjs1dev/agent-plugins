@@ -3,24 +3,21 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Subscription limits, token history, workspace usage, coding CLI maintenance, and context-window reminders for bb.",
+  "description": "Subscription limits, token history, workspace usage, and context-window reminders for bb.",
   "engines": {
     "bb": ">=0.46",
     "bbPluginSdk": ">=0.6.49"
   },
   "bb": {
-    "name": "Essentials [Experimental]",
-    "description": "Subscription limits, token history, workspace usage, coding CLI maintenance, and context-window reminders.",
+    "name": "Essentials",
+    "description": "Subscription limits, token history, workspace usage, and context-window reminders.",
     "branding": {
       "icon": "./assets/icon.svg",
       "experimental_icons": {
         "gauge": "./assets/icons/gauge.svg",
         "chart": "./assets/icons/chart.svg",
-        "wrench": "./assets/icons/wrench.svg",
         "refresh": "./assets/icons/refresh.svg",
-        "download": "./assets/icons/download.svg",
-        "check": "./assets/icons/check.svg",
-        "open": "./assets/icons/open.svg",
+        "alarm": "./assets/icons/alarm.svg",
         "reset": "./assets/icons/reset.svg"
       }
     },

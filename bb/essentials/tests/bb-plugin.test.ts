@@ -10,7 +10,10 @@ import {
 import { writeSavedHistory } from "essentials/history-files";
 import type { HistoryRow } from "essentials/history";
 import type { History } from "essentials/history";
-import type { ReminderState } from "../server/entrypoints/contract";
+import type {
+  ReminderSettings,
+  ReminderState,
+} from "../server/entrypoints/contract";
 import plugin from "../server";
 
 const ENV_KEYS = [
@@ -161,6 +164,37 @@ void test("a turn above Warn at keeps a reminder until snoozed", async () => {
   await host.harness.lifecycle.dispose();
 });
 
+void test("Dismiss hides the card until Remind every turns pass", async () => {
+  const host = loaded(
+    { thr_main: context(0.3 * WINDOW) },
+    { notifyEvery: "3" },
+  );
+  await idle(host);
+  await eventually(
+    async () => (await reminderState(host, main.id)).notice !== null,
+  );
+
+  const dismissed = (await host.harness.behavior.callRpc(
+    "context_reminder.dismiss",
+    { threadId: main.id },
+  )) as ReminderState;
+  assert.equal(dismissed.notice, null);
+  assert.equal(dismissed.nextCardInTurns, 3);
+
+  for (const left of [2, 1]) {
+    await idle(host);
+    await eventually(
+      async () => (await reminderState(host, main.id)).nextCardInTurns === left,
+    );
+  }
+  await idle(host);
+  await eventually(
+    async () => (await reminderState(host, main.id)).notice !== null,
+  );
+  assert.equal((await reminderState(host, main.id)).nextCardInTurns, null);
+  await host.harness.lifecycle.dispose();
+});
+
 void test("Compact now compacts the thread and clears the reminder", async () => {
   const host = loaded({ thr_main: context(0.6 * WINDOW) });
   await idle(host);
@@ -216,7 +250,7 @@ function row(sessionId: string): HistoryRow {
   };
 }
 
-void test("workspace history counts the environment's linked sessions", async () => {
+void test("usage history is host-wide, with empty workspace totals", async () => {
   const scannedAt = new Date().toISOString();
   const collector = { updatedThrough: scannedAt, incomplete: false };
   await writeSavedHistory(join(home, "essentials_home", "provider-usage"), {
@@ -230,68 +264,51 @@ void test("workspace history counts the environment's linked sessions", async ()
     },
     rows: [row("sess-main"), row("sess-child"), row("terminal")],
   });
-  const host = loaded({
-    thr_main: context(0.1 * WINDOW),
-    thr_child: context(0.1 * WINDOW, "sess-child"),
-  });
-  await idle(host);
-  await idle(host, child);
-  await eventually(
-    async () => (await reminderState(host, main.id)).reading !== null,
-  );
+  const host = loaded({});
 
-  const read = (threadId: string | null) =>
-    host.harness.behavior.callRpc("usage.history", {
-      provider: "claude",
-      threadId,
-      days: 7,
-      scope: "workspace",
-      sessionOffset: 0,
-    }) as Promise<History>;
-  let workspace = await read(main.id);
-  await eventually(async () => {
-    workspace = await read(main.id);
-    return workspace.workspaceSessionCount === 2;
-  });
-  assert.equal(workspace.sessionCount, 2);
-  // Sessions started outside bb still count toward the host.
-  assert.equal(workspace.totals.input, 300);
+  const history = (await host.harness.behavior.callRpc("usage.history", {
+    provider: "claude",
+    days: 7,
+    sessionOffset: 0,
+  })) as History;
 
-  const hostOnly = await read(null);
-  assert.equal(hostOnly.workspaceSessionCount, 0);
-  assert.equal(hostOnly.totals.input, 300);
+  assert.equal(history.sessionCount, 3);
+  assert.equal(history.totals.input, 300);
+  assert.equal(history.workspaceSessionCount, 0);
+  assert.equal(history.workspaceTotals.input, 0);
   await host.harness.lifecycle.dispose();
 });
 
-void test("cli.models lists bb's catalog for the CLI's provider", async () => {
+void test("the Context Reminder page reads and saves typed settings", async () => {
+  const host = loaded({}, { warnPercent: "50" });
+
+  const before = (await host.harness.behavior.callRpc(
+    "context_reminder.settings",
+    {},
+  )) as ReminderSettings;
+  assert.equal(before.warnPercent, 50);
+
+  const after = (await host.harness.behavior.callRpc(
+    "context_reminder.configure",
+    { askPercent: 70, character: "boy", enabled: false },
+  )) as ReminderSettings;
+
+  assert.equal(after.warnPercent, 50);
+  assert.equal(after.askPercent, 70);
+  assert.equal(after.character, "boy");
+  assert.equal(after.enabled, false);
+  assert.equal((await reminderState(host, main.id)).config.askPercent, 70);
+  await host.harness.lifecycle.dispose();
+});
+
+void test("the Context Reminder page rejects a value bb cannot store", async () => {
   const host = loaded({});
-  host.harness.sdk.stub("providers.models", async () => ({
-    modelLoadError: null,
-    models: [
-      {
-        defaultReasoningEffort: "medium",
-        description: "Fast model",
-        displayName: "Sonnet",
-        id: "claude-code:sonnet",
-        isDefault: true,
-        model: "sonnet",
-        supportedReasoningEfforts: [],
-      },
-    ],
-    permissionCeiling: "accept-edits",
-    providers: [],
-  }));
 
-  const result = await host.harness.behavior.callRpc("cli.models", {
-    id: "claude",
-  });
-
-  assert.deepEqual(result, {
-    models: [{ id: "sonnet", label: "Sonnet", description: "Fast model" }],
-    error: "",
-  });
-  const [args] =
-    host.harness.inspection.sdk.callsTo("providers.models")[0] ?? [];
-  assert.deepEqual(args, { providerId: "claude-code" });
+  await assert.rejects(
+    host.harness.behavior.callRpc("context_reminder.configure", {
+      warnPercent: 33,
+    }),
+    /could not save/,
+  );
   await host.harness.lifecycle.dispose();
 });

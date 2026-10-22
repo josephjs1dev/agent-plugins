@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from "react";
-import type { HistoryScope } from "essentials/history";
 import type { Provider } from "essentials/providers";
 import { errorMessage, useCall, useQuery } from "../data";
 
@@ -11,9 +10,7 @@ const RESCAN_POLL_MS = 1_500;
 
 export interface HistoryRequest {
   provider: Provider;
-  threadId: string | null;
   days: 7 | 30;
-  scope: HistoryScope;
   sessionOffset: number;
 }
 

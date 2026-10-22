@@ -1,5 +1,8 @@
 import { useState } from "react";
-import type { PluginThreadHeaderActionProps } from "@get-bb/plugin-sdk/app";
+import {
+  experimental_useSidebarThreads as useSidebarThreads,
+  type PluginThreadHeaderActionProps,
+} from "@get-bb/plugin-sdk/app";
 import {
   providerDefinitions,
   providerIds,
@@ -15,20 +18,44 @@ import {
 import { ICONS } from "../../shared/icons";
 import { useOpenHistory } from "../navigation";
 import { HeaderTrigger } from "./header-trigger";
-import { ProviderSwitcher } from "./provider-mark";
+import {
+  ProviderMark,
+  ProviderSwitcher,
+  quotaProviderOf,
+} from "./provider-mark";
 import { QuotaCard } from "./quota-card";
 import { useUsage } from "./use-usage";
 
 const FIRST_PROVIDER: Provider = providerIds[0] ?? "chatgpt";
 
+/** The quota provider of the thread's agent provider, or null for others. */
+function useThreadQuotaProvider(threadId: string): Provider | null {
+  const { threads } = useSidebarThreads();
+  const thread = threads.find((candidate) => candidate.id === threadId);
+  return thread ? quotaProviderOf(thread.providerId) : null;
+}
+
 /**
- * The thread header's quota control. Each mounted header keeps its own
- * selected provider, so split panes choose independently.
+ * The thread header's quota control. It follows the subscription behind the
+ * thread's provider. A provider picked in the popover holds until the
+ * thread's provider changes. Each mounted header keeps its own pick, so split
+ * panes choose independently.
  */
 export function ProviderUsageButton({
+  threadId,
   isCompactViewport,
 }: PluginThreadHeaderActionProps) {
-  const [provider, setProvider] = useState<Provider>(FIRST_PROVIDER);
+  const threadProvider = useThreadQuotaProvider(threadId);
+  const [picked, setPicked] = useState<{
+    threadProvider: Provider | null;
+    provider: Provider;
+  } | null>(null);
+  const provider =
+    picked?.threadProvider === threadProvider
+      ? picked.provider
+      : (threadProvider ?? FIRST_PROVIDER);
+  const setProvider = (next: Provider) =>
+    setPicked({ threadProvider, provider: next });
   const [open, setOpen] = useState(false);
   const query = useUsage(provider);
   const openHistory = useOpenHistory();
@@ -38,7 +65,7 @@ export function ProviderUsageButton({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <HeaderTrigger
-          icon={ICONS.gauge}
+          icon={<ProviderMark provider={provider} className="size-4" />}
           label={label}
           compact={isCompactViewport}
         />
@@ -62,7 +89,7 @@ export function ProviderUsageButton({
               type="button"
               onClick={() => {
                 setOpen(false);
-                openHistory(provider, 7, "host");
+                openHistory(provider, 7);
               }}
               className="flex min-h-10 w-full items-center justify-between gap-3 border-t pt-3 text-sm font-medium hover:text-foreground"
             >

@@ -1,29 +1,22 @@
 import type { PluginThreadPanelProps } from "@get-bb/plugin-sdk/app";
 import { parseHistoryParams } from "../navigation";
-import type { HistorySelection } from "./selection";
 import { HistoryView } from "./view";
 
-function selectionOf(params: unknown): HistorySelection {
-  return parseHistoryParams(params);
-}
-
-/** The thread side-panel tab: this environment's or the host's history. */
+/** The thread side-panel tab. */
 export function HistoryPanel({ threadId, params }: PluginThreadPanelProps) {
   return (
     <HistoryView
       key={`${threadId}:${JSON.stringify(params)}`}
-      threadId={threadId}
-      initial={selectionOf(params)}
+      initial={parseHistoryParams(params)}
     />
   );
 }
 
-/** Host-wide history for the Essentials page. */
-export function HostHistory() {
+/** The Usage history page in the navigation rail. */
+export function HistoryPage() {
   return (
-    <HistoryView
-      threadId={null}
-      initial={{ provider: "chatgpt", days: 7, scope: "host" }}
-    />
+    <div className="h-full min-h-0 overflow-y-auto p-4 md:p-5">
+      <HistoryView initial={{ provider: "chatgpt", days: 7 }} />
+    </div>
   );
 }

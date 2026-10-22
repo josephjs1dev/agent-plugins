@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { History, HistoryScope } from "essentials/history";
+import type { History } from "essentials/history";
 import {
   bucketLabel,
   compactTokens,
@@ -66,17 +66,14 @@ function Bar({
 export function HistoryChart({
   data,
   days,
-  scope,
   metric,
 }: {
   data: History;
   days: 7 | 30;
-  scope: HistoryScope;
   metric: ChartMetric;
 }) {
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
-  const daily = scope === "workspace" ? data.workspaceDaily : data.daily;
-  const buckets = historyBuckets(daily, days, data.periodEnd);
+  const buckets = historyBuckets(data.daily, days, data.periodEnd);
   const maximum = Math.max(
     0,
     ...buckets.map((bucket) => amount(bucket, metric) ?? 0),

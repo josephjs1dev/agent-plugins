@@ -1,6 +1,10 @@
 import { useCallback, useState } from "react";
+import { percentOfWindow } from "essentials/context-reminder/gauge";
+import { reminderTier } from "essentials/context-reminder/reminder-policy";
 import { errorMessage, useCall, useQuery, type Output } from "../data";
 import { REMINDER_CHANGED } from "../../shared/signals";
+import { clockTime, nextCardLabel } from "./labels";
+import type { CardReading } from "./reminder-card";
 
 export type ReminderState = Output<"context_reminder.state">;
 export type ReminderAction = "compact" | "snooze" | "dismiss";
@@ -63,4 +67,57 @@ export function useReminder(threadId: string | null) {
     [call, set, threadId],
   );
   return { state: query.data, error: error ?? query.error, pending, act };
+}
+
+/** What a reminder surface shows for one thread's state. */
+export interface ReminderView {
+  reading: CardReading;
+  /** A reminder is due: the card shows until the user acts. */
+  hasNotice: boolean;
+  percent: number;
+  /** When reminders resume or the next card is due; empty when neither. */
+  status: string;
+}
+
+/**
+ * The reminder to show, or null when there is nothing to show. Below Warn at,
+ * `includeQuiet` still returns the reading, as the thread header does.
+ */
+export function reminderView(
+  state: ReminderState | null,
+  includeQuiet: boolean,
+): ReminderView | null {
+  if (!state || !state.config.enabled) {
+    return null;
+  }
+  const { reading, notice, config } = state;
+  // A preview notice can arrive before the thread's first reading.
+  const tier =
+    reading === null
+      ? null
+      : reminderTier(reading.usedTokens, reading.maxTokens, config);
+  if (
+    notice === null &&
+    (reading === null || (tier === null && !includeQuiet))
+  ) {
+    return null;
+  }
+  const shown: CardReading = notice ?? {
+    usedTokens: reading?.usedTokens ?? 0,
+    maxTokens: reading?.maxTokens ?? 1,
+    tier,
+    snoozeMinutes: config.snoozeMinutes,
+  };
+  let status = "";
+  if (state.snoozedUntil !== null) {
+    status = `Snoozed until ${clockTime(state.snoozedUntil)}`;
+  } else if (state.nextCardInTurns !== null) {
+    status = nextCardLabel(state.nextCardInTurns);
+  }
+  return {
+    reading: shown,
+    hasNotice: notice !== null,
+    percent: percentOfWindow(shown.usedTokens, shown.maxTokens),
+    status,
+  };
 }

@@ -24,3 +24,21 @@ test("Claude cost ignores date and context suffixes and rejects unknown models",
   assert.equal(estimateClaudeCost("claude-unknown", tokens), null);
   assert.equal(estimateClaudeCost("constructor", tokens), null);
 });
+
+test("Claude Haiku 5.5 switches rate cards above a 100K-token prompt", () => {
+  const short = estimateClaudeCost("claude-haiku-5-5", {
+    input: 50_000,
+    cacheRead: 50_000,
+    cacheWrite: 0,
+    output: 1_000_000,
+  });
+  const long = estimateClaudeCost("claude-haiku-5-5", {
+    input: 50_001,
+    cacheRead: 50_000,
+    cacheWrite: 0,
+    output: 1_000_000,
+  });
+
+  assert.ok(Math.abs((short ?? 0) - (0.005 + 0.0005 + 0.5)) < 1e-9);
+  assert.ok(Math.abs((long ?? 0) - (0.0250005 + 0.0025 + 2.5)) < 1e-9);
+});

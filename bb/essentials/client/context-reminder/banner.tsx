@@ -1,12 +1,9 @@
 import { useState } from "react";
 import { useComposer } from "@get-bb/plugin-sdk/app";
-import { percentOfWindow } from "essentials/context-reminder/gauge";
-import { reminderTier } from "essentials/context-reminder/reminder-policy";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { errorMessage, useCall } from "../data";
 import { ReminderCard } from "./reminder-card";
-import { useReminder } from "./state";
+import { reminderView, useReminder } from "./state";
 
 /** The composer popup that previews a reminder. */
 export const PREVIEW_POPUP = "context-reminder-preview";
@@ -18,87 +15,35 @@ function useThreadId(): string | null {
   return scope.kind === "thread" ? scope.threadId : null;
 }
 
-function snoozeLabel(snoozedUntil: string | null): string {
-  if (snoozedUntil === null) {
-    return "";
-  }
-  const time = new Date(snoozedUntil).toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  return ` · snoozed until ${time}`;
-}
-
 /**
- * Shows above a thread composer while its context fill is at or above Warn
- * at: a slim pill, or the reminder card when one is due or the pill is open.
+ * Shows the reminder card above a thread composer while a reminder is due.
+ * The thread header shows the fill the rest of the time.
  */
 export function ReminderBanner() {
   const composer = useComposer();
   const threadId = useThreadId();
   const { state, error, pending, act } = useReminder(threadId);
-  const [expanded, setExpanded] = useState(false);
-  if (!state || !state.config.enabled) {
+  const view = reminderView(state, false);
+  if (!state || !view?.hasNotice) {
     return null;
   }
-  const { reading, notice, config } = state;
-  // A preview notice can arrive before the thread's first reading.
-  const tier =
-    reading === null
-      ? null
-      : reminderTier(reading.usedTokens, reading.maxTokens, config);
-  if (notice === null && (reading === null || tier === null)) {
-    return null;
-  }
-  const shown = notice ?? {
-    usedTokens: reading?.usedTokens ?? 0,
-    maxTokens: reading?.maxTokens ?? 1,
-    tier: tier ?? "warn",
-    snoozeMinutes: config.snoozeMinutes,
-  };
-  if (notice !== null || expanded || reading === null) {
-    return (
-      <ReminderCard
-        notice={shown}
-        character={state.character}
-        isRunning={composer.isRunning}
-        pending={pending}
-        error={error}
-        closeLabel={notice === null ? "Hide" : "Dismiss"}
-        onAction={(action) => {
-          act(action, shown.snoozeMinutes).catch(() => undefined);
-        }}
-        onClose={() => {
-          if (notice === null) {
-            setExpanded(false);
-          } else {
-            act("dismiss").catch(() => undefined);
-          }
-        }}
-      />
-    );
-  }
-  const percent = percentOfWindow(shown.usedTokens, shown.maxTokens);
+  const { reading } = view;
   return (
-    <button
-      type="button"
-      aria-expanded={false}
-      aria-label={`Context ${percent}% full. Show Context Reminder.`}
-      onClick={() => setExpanded(true)}
-      className="inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1 text-xs hover:bg-state-hover"
-    >
-      <span
-        aria-hidden
-        className={cn(
-          "size-2 rounded-full",
-          tier === "ask" ? "bg-destructive" : "bg-amber-500",
-        )}
-      />
-      <span className="tabular-nums">Context {percent}%</span>
-      <span className="text-muted-foreground">
-        {snoozeLabel(state.snoozedUntil)}
-      </span>
-    </button>
+    <ReminderCard
+      notice={reading}
+      character={state.character}
+      isRunning={composer.isRunning}
+      pending={pending}
+      error={error}
+      snoozedUntil={state.snoozedUntil}
+      closeLabel="Dismiss"
+      onAction={(action) => {
+        act(action, reading.snoozeMinutes).catch(() => undefined);
+      }}
+      onClose={() => {
+        act("dismiss").catch(() => undefined);
+      }}
+    />
   );
 }
 

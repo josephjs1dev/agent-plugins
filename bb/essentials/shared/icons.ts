@@ -2,10 +2,7 @@
 export const ICONS = {
   gauge: "essentials/gauge",
   chart: "essentials/chart",
-  wrench: "essentials/wrench",
   refresh: "essentials/refresh",
-  download: "essentials/download",
-  check: "essentials/check",
-  open: "essentials/open",
+  alarm: "essentials/alarm",
   reset: "essentials/reset",
 } as const;

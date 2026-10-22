@@ -1,6 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { experimental_ProviderIcon as ProviderIcon } from "@get-bb/plugin-sdk/app";
-import { harnessDefinitions, type Harness } from "essentials/harnesses";
+import { harnessDefinitions } from "essentials/harnesses";
 import type { History, Totals } from "essentials/history";
 import {
   compactTokens,
@@ -8,16 +7,10 @@ import {
   totalTokens,
 } from "essentials/history-display";
 import { Icon } from "@/components/ui/icon";
+import { bbProvidersOf } from "../../shared/providers";
+import { AgentMark } from "../usage/provider-mark";
 import { HistoryValue } from "./controls";
 import { hasCostEstimate, TokenDetails } from "./totals";
-
-/** bb's agent provider ID for each harness, for its logo. */
-const HARNESS_PROVIDERS: Record<Harness, string> = {
-  codex: "codex",
-  claude: "claude-code",
-  opencode: "opencode",
-  pi: "pi",
-};
 
 /** A row that expands to show its details below it. */
 function ExpandableRow({
@@ -158,11 +151,10 @@ export function SessionUsage({
       label={`${harnessName} session ${session.sessionId}`}
       summary={
         <>
-          <ProviderIcon
-            providerKind="agent"
-            provider={{ id: HARNESS_PROVIDERS[session.harness] }}
-            className="size-4 shrink-0"
-            aria-hidden
+          <AgentMark
+            providerIds={bbProvidersOf(session.harness)}
+            label={harnessName}
+            className="size-4"
           />
           <span className="min-w-0 flex-1 space-y-0.5">
             <span className="block truncate text-sm font-medium">

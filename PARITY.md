@@ -64,23 +64,18 @@ bb's vendored components in bb.
 
 | Capability                                           | Core             | Paseo                                      | bb                                                      |
 | ---------------------------------------------------- | ---------------- | ------------------------------------------ | ------------------------------------------------------- |
-| Data in `$ESSENTIALS_HOME` (default `~/.essentials`) | done             | done: shared history cache                 | done: shared history cache, session links in `bb/`      |
+| Data in `$ESSENTIALS_HOME` (default `~/.essentials`) | done             | done: shared history cache                 | done: shared history cache                              |
 | Legacy data directory adoption                       | done             | done: `$PASEO_HOME/storage/provider-usage` | n/a                                                     |
-| Subscription limits and Codex banked resets          | done             | done: workspace header button              | done: thread header button, Essentials page             |
-| Token history (host scope)                           | done             | done: usage history panel                  | done: Essentials page, thread panel                     |
-| Workspace usage and history                          | done: link store | done: agents' persisted sessions           | partial: threads' context readings, see below           |
-| CLI versions and updates                             | done             | done: provider command overrides           | partial: CLIs resolve from `PATH`                       |
-| Model refresh and catalog                            | done: CLI caches | done: Paseo provider discovery             | done: `bb.sdk.providers.models`                         |
+| Subscription limits and Codex banked resets          | done             | done: workspace header button              | done: thread header button follows the thread           |
+| Token history (host scope)                           | done             | done: usage history panel                  | done: Usage history page, thread panel                  |
+| Workspace usage and history                          | done: link store | done: agents' persisted sessions           | n/a: bb has threads, not workspaces                     |
+| CLI versions and updates                             | done             | done: provider command overrides           | n/a: bb maintains its harnesses                         |
+| Model refresh and catalog                            | done: CLI caches | done: Paseo provider discovery             | n/a: bb maintains its harnesses                         |
 | Context Reminder policy                              | done: tracker    | done: `agent.turn_ended`                   | done: `thread.idle` and `threads.context`               |
 | Context Reminder display                             | n/a              | done: composer pill, timeline cards        | done: composer banner (bb has no plugin timeline items) |
 | Compact now                                          | n/a              | done: sends `/compact`                     | done: `bb.sdk.threads.compact`                          |
-| Context Reminder settings                            | done             | done: settings screen with previews        | done: bb's settings form                                |
+| Context Reminder settings                            | done             | done: settings screen with previews        | done: Context Reminder page, bb's settings form         |
 | Context Reminder preview                             | done             | done: `/context-reminder demo`             | done: composer `+` menu                                 |
-
-bb reports one provider session per context reading. A thread links the
-sessions it reported while Essentials ran, plus the session of its latest
-reading when history syncs, so a session the thread cleared before then stays
-unattributed.
 
 ### Validation
 

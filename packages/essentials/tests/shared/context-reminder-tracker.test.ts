@@ -61,3 +61,21 @@ test("a missing window size assumes the default window", () => {
   assert.equal(demoNotice(60, DEFAULT_SETTINGS).tier, "ask");
   assert.equal(demoNotice(0, DEFAULT_SETTINGS).tier, "warn");
 });
+
+test("a dismissed card returns after a full notifyEvery turns", () => {
+  const tracker = createReminderTracker(() => 0);
+  const settings = { ...DEFAULT_SETTINGS, notifyEvery: 3 };
+
+  assert.equal(tracker.observe("a", at(30), MAX, settings)?.tier, "warn");
+  assert.equal(tracker.observe("a", at(30), MAX, settings), null);
+  assert.equal(tracker.observe("a", at(30), MAX, settings), null);
+  assert.equal(tracker.turnsSinceCard("a"), 2);
+  tracker.dismiss("a");
+  assert.equal(tracker.turnsSinceCard("a"), 0);
+  assert.equal(tracker.observe("a", at(30), MAX, settings), null);
+  assert.equal(tracker.observe("a", at(30), MAX, settings), null);
+  assert.equal(tracker.observe("a", at(30), MAX, settings)?.tier, "warn");
+  // Dismissing an agent the tracker has not seen changes nothing.
+  tracker.dismiss("b");
+  assert.equal(tracker.turnsSinceCard("b"), 0);
+});

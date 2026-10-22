@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { experimental_ProviderIcon as ProviderIcon } from "@get-bb/plugin-sdk/app";
 import {
   providerDefinitions,
   providerIds,
@@ -7,14 +6,12 @@ import {
 } from "essentials/providers";
 import { ChoiceGroup } from "./controls";
 import { HistoryResults } from "./results";
-import { scopeLabel, type HistorySelection } from "./selection";
 
-/** bb's agent provider ID whose logo marks each quota provider. */
-const PROVIDER_LOGOS: Record<Provider, string> = {
-  chatgpt: "codex",
-  claude: "claude-code",
-  "opencode-go": "opencode",
-};
+export interface HistorySelection {
+  provider: Provider;
+  days: 7 | 30;
+}
+
 /** Below this width the view drops secondary columns. */
 const COMPACT_WIDTH = 560;
 
@@ -37,30 +34,21 @@ function useCompact() {
   return { ref, compact };
 }
 
-/**
- * Usage history with provider, period, and (for a thread) scope controls.
- * A null thread reads host history and hides the scope switch.
- */
-export function HistoryView({
-  threadId,
-  initial,
-}: {
-  threadId: string | null;
-  initial: HistorySelection;
-}) {
-  const [selection, setSelection] = useState<HistorySelection>(
-    threadId === null ? { ...initial, scope: "host" } : initial,
-  );
+/** Host-wide usage history with provider and period controls. */
+export function HistoryView({ initial }: { initial: HistorySelection }) {
+  const [selection, setSelection] = useState(initial);
   const { ref, compact } = useCompact();
   const select = (next: Partial<HistorySelection>) =>
     setSelection((current) => ({ ...current, ...next }));
-  const { provider, days, scope } = selection;
+  const { provider, days } = selection;
   return (
     <div ref={ref} className="mx-auto w-full max-w-5xl space-y-6">
       <div className="space-y-3">
         <div className="space-y-0.5">
           <h2 className="text-lg font-semibold">Usage history</h2>
-          <p className="text-xs text-muted-foreground">{scopeLabel(scope)}</p>
+          <p className="text-xs text-muted-foreground">
+            Every thread on this bb host
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <ChoiceGroup
@@ -69,30 +57,9 @@ export function HistoryView({
             onChange={(next) => select({ provider: next })}
             choices={providerIds.map((id) => ({
               value: id,
-              label: (
-                <>
-                  <ProviderIcon
-                    providerKind="agent"
-                    provider={{ id: PROVIDER_LOGOS[id] }}
-                    className="size-3.5"
-                    aria-hidden
-                  />
-                  {providerDefinitions[id].name}
-                </>
-              ),
+              label: providerDefinitions[id].name,
             }))}
           />
-          {threadId !== null && (
-            <ChoiceGroup
-              label="History scope"
-              value={scope}
-              onChange={(next) => select({ scope: next })}
-              choices={[
-                { value: "workspace", label: "This environment" },
-                { value: "host", label: "All environments" },
-              ]}
-            />
-          )}
           <ChoiceGroup
             label="Time period"
             value={days}
@@ -105,8 +72,7 @@ export function HistoryView({
         </div>
       </div>
       <HistoryResults
-        key={`${provider}:${days}:${scope}`}
-        threadId={threadId}
+        key={`${provider}:${days}`}
         selection={selection}
         compact={compact}
       />

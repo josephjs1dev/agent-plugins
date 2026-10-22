@@ -12,7 +12,7 @@ import { ChoiceGroup, HistorySection } from "./controls";
 import { useHistory, validSessionOffset } from "./query";
 import { HistorySessions } from "./sessions";
 import { UsageSummary } from "./totals";
-import { scopeLabel, type HistorySelection } from "./selection";
+import type { HistorySelection } from "./view";
 
 function costNote(selection: HistorySelection, hasCost: boolean): string {
   if (selection.provider === "chatgpt") {
@@ -59,28 +59,20 @@ export function hasDailyCost(
   );
 }
 
-/** One provider, period, and scope of history, with its own session page. */
+/** One provider and period of history, with its own session page. */
 export function HistoryResults({
-  threadId,
   selection,
   compact,
 }: {
-  threadId: string | null;
   selection: HistorySelection;
   compact: boolean;
 }) {
-  const { provider, days, scope } = selection;
+  const { provider, days } = selection;
   const [sessionOffset, setSessionOffset] = useState(0);
   const [metric, setMetric] = useState<ChartMetric>(
     provider === "chatgpt" ? "cost" : "tokens",
   );
-  const history = useHistory({
-    provider,
-    threadId,
-    days,
-    scope,
-    sessionOffset,
-  });
+  const history = useHistory({ provider, days, sessionOffset });
   const { data } = history;
   useEffect(() => {
     if (data) {
@@ -90,10 +82,9 @@ export function HistoryResults({
       }
     }
   }, [data, sessionOffset]);
-  const periodLabel = `${scopeLabel(scope)} · ${days} days`;
-  const totals = scope === "workspace" ? data?.workspaceTotals : data?.totals;
-  const daily =
-    (scope === "workspace" ? data?.workspaceDaily : data?.daily) ?? [];
+  const periodLabel = `${days} days`;
+  const totals = data?.totals;
+  const daily = data?.daily ?? [];
   const hasCost = hasDailyCost(provider, daily);
   const activeMetric = metric === "cost" && !hasCost ? "tokens" : metric;
   return (
@@ -147,12 +138,7 @@ export function HistoryResults({
               ) : undefined
             }
           >
-            <HistoryChart
-              data={data}
-              days={days}
-              scope={scope}
-              metric={activeMetric}
-            />
+            <HistoryChart data={data} days={days} metric={activeMetric} />
           </HistorySection>
           <HistorySection
             title="Models"
@@ -168,7 +154,7 @@ export function HistoryResults({
             sessions={data.sessions}
             sessionCount={data.sessionCount}
             scopeLabel={periodLabel}
-            showDirectory={scope === "host"}
+            showDirectory
             sessionOffset={sessionOffset}
             onPageChange={setSessionOffset}
           />

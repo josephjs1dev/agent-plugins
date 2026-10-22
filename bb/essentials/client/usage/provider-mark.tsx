@@ -1,17 +1,71 @@
-import { experimental_ProviderIcon as ProviderIcon } from "@get-bb/plugin-sdk/app";
+import {
+  experimental_ProviderIcon as ProviderIcon,
+  experimental_useProviders as useProviders,
+} from "@get-bb/plugin-sdk/app";
 import {
   providerDefinitions,
   providerIds,
   type Provider,
 } from "essentials/providers";
 import { cn } from "@/lib/utils";
+import { bbProvidersOf } from "../../shared/providers";
 
-/** The bb agent provider whose artwork stands for each quota provider. */
-const AGENT_PROVIDER: Record<Provider, string> = {
-  chatgpt: "codex",
-  claude: "claude-code",
-  "opencode-go": "opencode",
+/** The bb agent providers that run on each quota provider's subscription. */
+const AGENT_PROVIDERS: Record<Provider, readonly string[]> = {
+  chatgpt: bbProvidersOf("codex"),
+  claude: bbProvidersOf("claude"),
+  "opencode-go": bbProvidersOf("opencode"),
 };
+
+/** The quota provider behind a bb agent provider, or null for others. */
+export function quotaProviderOf(agentProviderId: string): Provider | null {
+  return (
+    providerIds.find((id) => AGENT_PROVIDERS[id].includes(agentProviderId)) ??
+    null
+  );
+}
+
+/**
+ * The mark of the first of `providerIds` that bb lists. An id-only record
+ * draws only frontend registrations, so the mark reads bb's provider
+ * directory for the logo. When bb lists none, it draws a monogram of `label`.
+ * Decorative: the caller's accessible label names the provider.
+ */
+export function AgentMark({
+  providerIds: candidates,
+  label,
+  className,
+}: {
+  providerIds: readonly string[];
+  label: string;
+  className?: string;
+}) {
+  const { providers } = useProviders();
+  const entry = candidates
+    .map((id) => providers.find((candidate) => candidate.id === id))
+    .find((candidate) => candidate !== undefined);
+  if (entry) {
+    return (
+      <ProviderIcon
+        providerKind="agent"
+        provider={entry}
+        aria-hidden
+        className={cn("size-5 shrink-0", className)}
+      />
+    );
+  }
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "inline-flex size-5 shrink-0 items-center justify-center rounded-[3px] bg-muted text-[10px] font-semibold text-foreground",
+        className,
+      )}
+    >
+      {label.trim().charAt(0).toUpperCase()}
+    </span>
+  );
+}
 
 export function ProviderMark({
   provider,
@@ -21,11 +75,10 @@ export function ProviderMark({
   className?: string;
 }) {
   return (
-    <ProviderIcon
-      providerKind="agent"
-      provider={{ id: AGENT_PROVIDER[provider] }}
-      className={cn("size-5", className)}
-      aria-hidden
+    <AgentMark
+      providerIds={AGENT_PROVIDERS[provider]}
+      label={providerDefinitions[provider].name}
+      {...(className === undefined ? {} : { className })}
     />
   );
 }

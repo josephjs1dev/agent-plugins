@@ -11,12 +11,6 @@ import {
 } from "essentials/codex-reset";
 import { readHistoryDefinition } from "essentials/history";
 import {
-  applyCliUpdateDefinition,
-  checkCliUpdatesDefinition,
-  cliSchema,
-  readMaintenanceDefinition,
-} from "essentials/cli-maintenance";
-import {
   characterSchema,
   reminderConfigSchema,
   reminderNoticeSchema,
@@ -48,13 +42,11 @@ function method<Input extends Typed, Output extends Typed>(definition: {
 const threadId = z.string().min(1).max(256);
 const thread = z.object({ threadId }).strict();
 
-/**
- * bb scopes workspace history to the thread's environment. A null thread
- * reads host history only.
- */
-export const historyInput = readHistoryDefinition.input
-  .omit({ workspaceId: true })
-  .extend({ threadId: threadId.nullable() });
+/** bb has no workspaces, so history is always host-wide. */
+export const historyInput = readHistoryDefinition.input.omit({
+  workspaceId: true,
+  scope: true,
+});
 
 export const reminderReadingSchema = z.object({
   usedTokens: z.int().min(0),
@@ -69,14 +61,19 @@ export const reminderStateSchema = z.object({
   /** The reminder to show, until the user acts or usage drops below Warn at. */
   notice: reminderNoticeSchema.nullable(),
   snoozedUntil: z.iso.datetime().nullable(),
+  /**
+   * Turns until the next card while usage is at or above Warn at and no card
+   * shows, as after Dismiss; null otherwise. A rise to Ask shows sooner.
+   */
+  nextCardInTurns: z.int().min(0).max(1000).nullable(),
 });
 export type ReminderState = z.infer<typeof reminderStateSchema>;
 
-export const modelSchema = z.object({
-  id: z.string().max(400),
-  label: z.string().max(400),
-  description: z.string().max(2000),
+/** Context Reminder settings, typed; bb stores select values as strings. */
+export const reminderSettingsSchema = reminderConfigSchema.extend({
+  character: characterSchema,
 });
+export type ReminderSettings = z.infer<typeof reminderSettingsSchema>;
 
 /** The Essentials RPCs on bb, keyed by the core definitions' names. */
 export const essentialsContract = defineRpcContract({
@@ -86,21 +83,6 @@ export const essentialsContract = defineRpcContract({
   "usage.history": method({
     input: historyInput,
     output: readHistoryDefinition.output,
-  }),
-  "cli.status": method(readMaintenanceDefinition),
-  "cli.check": method(checkCliUpdatesDefinition),
-  "cli.update": method(applyCliUpdateDefinition),
-  "cli.models.refresh": method({
-    input: z.object({ id: cliSchema }).strict(),
-    output: readMaintenanceDefinition.output,
-  }),
-  // bb-only: the model catalog comes from bb's providers.
-  "cli.models": method({
-    input: z.object({ id: cliSchema }).strict(),
-    output: z.object({
-      models: z.array(modelSchema).max(2000),
-      error: z.string().max(400),
-    }),
   }),
   "context_reminder.state": method({
     input: thread,
@@ -117,6 +99,14 @@ export const essentialsContract = defineRpcContract({
   "context_reminder.compact": method({
     input: thread,
     output: reminderStateSchema,
+  }),
+  "context_reminder.settings": method({
+    input: z.object({}).strict(),
+    output: reminderSettingsSchema,
+  }),
+  "context_reminder.configure": method({
+    input: reminderSettingsSchema.partial().strict(),
+    output: reminderSettingsSchema,
   }),
   "context_reminder.demo": method({
     input: thread.extend({ percent: z.int().min(0).max(100) }),

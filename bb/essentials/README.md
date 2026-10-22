@@ -1,79 +1,73 @@
 # Essentials for bb
 
-Experimental. Essentials adds subscription limits, token history, workspace
-usage, coding CLI maintenance, and context-window reminders to bb. This
-adapter runs the Essentials core from `packages/essentials` on the bb plugin
+Experimental. Essentials adds subscription limits, token history, and
+context-window reminders to bb. This adapter runs the Essentials core from `packages/essentials` on the bb plugin
 SDK. [PARITY.md](../../PARITY.md) lists what it supports. The
 [Paseo README](../../paseo/essentials/README.md) describes each feature, the
 provider logins, and the data sources in detail.
 
 ## Use
 
-- **Provider usage.** A thread-header button shows the selected provider's
-  remaining quota. Its popover shows the ChatGPT/Codex, Claude, or OpenCode Go
-  quota windows, credits, and banked Codex resets.
-- **Workspace usage.** A second thread-header button summarizes token usage
-  for the thread's environment over 7 or 30 days, by model and session.
-- **Usage history.** **Usage history** in the thread's right panel shows
-  daily charts and breakdowns for the environment or the whole host. The
-  **Essentials** page in the navigation rail shows host-wide history.
-- **Harnesses.** The **Essentials** page's Harnesses tab compares installed
-  and latest Codex, Claude Code, OpenCode, and Pi versions. It updates
-  recognized installations and lists the models bb offers for each CLI.
+- **Provider usage.** A thread-header button shows the remaining quota of the
+  subscription behind the thread's provider: ChatGPT for Codex, Claude for
+  Claude Code, and OpenCode Go for OpenCode (`acp-opencode`). Other providers
+  show ChatGPT. Its
+  popover shows the quota windows, credits, and banked Codex resets, and can
+  switch to another subscription until the thread's provider changes.
+- **Usage history.** The **Usage history** page in the navigation rail, and
+  **Usage history** in the thread's right panel, show daily charts and
+  breakdowns of every session on the host over 7 or 30 days.
 - **Context Reminder.** After each turn of a top-level thread, Essentials
-  reads the thread's context-window fill. At or above **Warn at**, a pill
-  above the composer shows the fill. When a reminder comes due, the pill
-  becomes a card with **Compact now**, **Snooze**, and **Dismiss**. Choose
+  reads the thread's context-window fill. When a reminder comes due, a card
+  above the composer offers **Compact now**, **Snooze**, and **Dismiss**. Dismiss
+  hides the card until **Remind every** turns pass; a rise to **Ask to compact
+  at** shows it sooner. While a thread is snoozed, Snooze is greyed out and
+  shows when reminders resume. A thread-header button shows the fill once the
+  thread has a reading and opens the same card in a popover. Choose
   **Preview Context Reminder** in the composer's `+` menu to preview a card.
+  The **Context Reminder** page in the navigation rail holds its settings.
 
 ## How it maps to bb
 
 | Essentials (Paseo)           | bb                                                    |
 | ---------------------------- | ----------------------------------------------------- |
-| Workspace                    | Environment                                           |
+| Workspace                    | None: history is host-wide                            |
 | Agent                        | Thread                                                |
 | Workspace header button      | Thread header action                                  |
-| Usage history panel          | Thread panel action and the Essentials page           |
-| Harnesses screen             | The Essentials page's Harnesses tab                   |
-| Provider model discovery     | `bb.sdk.providers.models`                             |
+| Usage history panel          | Thread panel action and the Usage history page        |
 | `agent.turn_ended`           | `thread.idle` event, then `bb.sdk.threads.context`    |
-| Timeline reminder card, pill | Composer banner                                       |
+| Timeline reminder card, pill | Composer banner card and thread header button         |
 | `/compact`                   | `bb.sdk.threads.compact`                              |
-| Context Reminder screen      | bb's settings form for the plugin                     |
+| Context Reminder screen      | The Context Reminder page and bb's settings form      |
 | `/context-reminder demo`     | **Preview Context Reminder** in the composer `+` menu |
 | Provider `claude`            | Provider `claude-code`                                |
 
-- **Workspace attribution.** bb reports a provider session ID with each
-  context reading. After each turn, Essentials saves the link from the
-  thread's environment to that session. When history loads, it also reads
-  the environment's threads, archived ones included. A session that a thread
-  cleared before Essentials saw it stays out of workspace scope. It still
-  counts toward the host.
+- **No workspace scope.** bb has threads, not workspaces, so this adapter
+  leaves out Paseo's workspace usage and always reads host-wide history. The
+  core's workspace totals come back empty.
 - **Context Reminder.** Child threads (subagents and task threads) get no
   reminder. Turn counts, snoozes, and pending reminders live in server
   memory, so a bb restart clears them. A missing window size assumes a
   1M-token window. The reminder appears only in the thread composer.
-- **CLI maintenance.** bb has no per-provider command settings, so each CLI
-  resolves from the bb server's `PATH`. **Refresh models** refreshes the
-  OpenCode and Pi CLI caches and then reads bb's model catalog.
+- **CLI maintenance.** bb updates its harnesses and lists their models
+  itself, so this adapter leaves out Paseo's Harnesses screen.
 
 ## Settings
 
-The plugin's settings page in bb holds the Context Reminder settings: Show
-Context Reminder, Warn at, Ask to compact at, Remind every, Snooze for, and
-Assistant. The defaults match Paseo's.
+The **Context Reminder** page in the navigation rail and the plugin's settings
+page in bb hold the same Context Reminder settings: Show Context Reminder,
+Warn at, Ask to compact at, Remind every, Snooze for, and Assistant. The page
+saves each change at once. The defaults match Paseo's.
 
 ## Data directory
 
 The history cache lives in `$ESSENTIALS_HOME/provider-usage` (default
 `~/.essentials/provider-usage`). Paseo uses the same cache, because both hosts
-derive it from the same local session records. bb's workspace session links
-live in `$ESSENTIALS_HOME/bb`, apart from Paseo's: each host rewrites its link
-file from memory.
+derive it from the same local session records.
 
 ## Limits
 
-- Quota, history, and CLI maintenance run on the bb server's machine, with
+- Quota and history run on the bb server's machine, with
   that machine's provider logins and session records.
 - bb shows no reminder card in the timeline, because only provider plugins
   own timeline items.

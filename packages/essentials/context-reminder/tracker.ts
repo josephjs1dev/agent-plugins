@@ -58,6 +58,22 @@ export function createReminderTracker(now: () => number = Date.now) {
 
       return new Date(snoozedUntil).toISOString();
     },
+    /**
+     * Restarts the agent's turn count after the user dismisses a card, so the
+     * next card waits a full `notifyEvery` turns. A rise to a higher tier
+     * still shows at once.
+     */
+    dismiss(agentId: string): void {
+      const state = states.get(agentId);
+
+      if (state) {
+        states.set(agentId, { ...state, turnsSinceCard: 0 });
+      }
+    },
+    /** Turns the agent has finished above the warn threshold since its last card. */
+    turnsSinceCard(agentId: string): number {
+      return states.get(agentId)?.turnsSinceCard ?? 0;
+    },
     forget(agentId: string): void {
       states.delete(agentId);
     },

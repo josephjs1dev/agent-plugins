@@ -21,7 +21,7 @@ import {
   demoNotice,
 } from "essentials/context-reminder/tracker";
 import { REMINDER_CHANGED } from "../../shared/signals";
-import type { Handlers, ReminderState } from "./contract";
+import type { Handlers, ReminderSettings, ReminderState } from "./contract";
 
 type Sdk = BbPluginApi["sdk"];
 type Reading = NonNullable<ReminderState["reading"]>;
@@ -88,8 +88,38 @@ export const reminderSettings = {
 
 type SettingsHandle = Pick<
   PluginSettingsHandle<typeof reminderSettings>,
-  "get" | "onChange"
+  "get" | "experimental_set" | "onChange"
 >;
+type StoredSettings = Parameters<SettingsHandle["experimental_set"]>[0];
+
+const NUMBER_SETTINGS = [
+  "warnPercent",
+  "askPercent",
+  "notifyEvery",
+  "snoozeMinutes",
+] as const;
+
+type SettingsPatch = {
+  [K in keyof ReminderSettings]?: ReminderSettings[K] | undefined;
+};
+
+/** A settings patch as bb stores it: selects hold strings. */
+function toStored(patch: SettingsPatch): StoredSettings {
+  const stored: StoredSettings = {};
+  if (patch.enabled !== undefined) {
+    stored.enabled = patch.enabled;
+  }
+  if (patch.character !== undefined) {
+    stored.character = patch.character;
+  }
+  for (const key of NUMBER_SETTINGS) {
+    const value = patch[key];
+    if (value !== undefined) {
+      stored[key] = String(value);
+    }
+  }
+  return stored;
+}
 
 export interface ReminderOptions {
   sdk: () => Sdk;
@@ -162,13 +192,25 @@ export function contextReminder({
     }
     const until = snoozes.get(threadId) ?? 0;
     const snoozed = until > now();
+    const notice =
+      config.enabled && !snoozed ? (notices.get(threadId) ?? null) : null;
+    const above =
+      reading !== null &&
+      reminderTier(reading.usedTokens, reading.maxTokens, config) !== null;
     return {
       config: toReminderConfig(config),
       character: config.character,
       reading,
-      notice:
-        config.enabled && !snoozed ? (notices.get(threadId) ?? null) : null,
+      notice,
       snoozedUntil: snoozed ? new Date(until).toISOString() : null,
+      nextCardInTurns:
+        config.enabled && above && notice === null
+          ? Math.max(
+              0,
+              Math.max(1, config.notifyEvery) -
+                tracker.turnsSinceCard(threadId),
+            )
+          : null,
     };
   }
 
@@ -211,6 +253,8 @@ export function contextReminder({
     | "context_reminder.snooze"
     | "context_reminder.dismiss"
     | "context_reminder.compact"
+    | "context_reminder.settings"
+    | "context_reminder.configure"
     | "context_reminder.demo"
   > = {
     "context_reminder.state": ({ threadId }) => state(threadId),
@@ -221,6 +265,7 @@ export function contextReminder({
       return state(threadId);
     },
     "context_reminder.dismiss"({ threadId }) {
+      tracker.dismiss(threadId);
       notices.delete(threadId);
       changed(threadId);
       return state(threadId);
@@ -236,6 +281,18 @@ export function contextReminder({
       notices.delete(threadId);
       changed(threadId);
       return state(threadId);
+    },
+    "context_reminder.settings": () => readSettings(),
+    async "context_reminder.configure"(patch) {
+      try {
+        await settings.experimental_set(toStored(patch));
+      } catch (error) {
+        log.warn(
+          `Context Reminder settings save failed: ${errorMessage(error)}`,
+        );
+        throw new Error("bb could not save the Context Reminder settings.");
+      }
+      return readSettings();
     },
     async "context_reminder.demo"({ threadId, percent }) {
       notices.set(threadId, demoNotice(percent, await readSettings()));

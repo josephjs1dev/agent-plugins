@@ -1,10 +1,14 @@
 import { definePluginApp } from "@get-bb/plugin-sdk/app";
 import { ICONS } from "./shared/icons";
-import { HISTORY_ACTION, PAGE_PATH } from "./client/navigation";
-import { EssentialsPage } from "./client/page";
+import {
+  HISTORY_ACTION,
+  HISTORY_PAGE_PATH,
+  REMINDER_PAGE_PATH,
+} from "./client/navigation";
+import { ContextReminderPage } from "./client/context-reminder/settings-page";
+import { ReminderHeaderButton } from "./client/context-reminder/header-button";
 import { ProviderUsageButton } from "./client/usage/provider-button";
-import { WorkspaceUsageButton } from "./client/usage/workspace-button";
-import { HistoryPanel } from "./client/history/panel";
+import { HistoryPage, HistoryPanel } from "./client/history/panel";
 import {
   PREVIEW_POPUP,
   ReminderBanner,
@@ -13,11 +17,18 @@ import {
 
 export default definePluginApp((app) => {
   app.slots.navPanel({
-    id: "essentials",
-    title: "Essentials",
-    icon: ICONS.gauge,
-    path: PAGE_PATH,
-    component: EssentialsPage,
+    id: "usage-history",
+    title: "Usage history",
+    icon: ICONS.chart,
+    path: HISTORY_PAGE_PATH,
+    component: HistoryPage,
+  });
+  app.slots.navPanel({
+    id: "context-reminder",
+    title: "Context Reminder",
+    icon: ICONS.alarm,
+    path: REMINDER_PAGE_PATH,
+    component: ContextReminderPage,
   });
   app.slots.experimental_threadHeaderAction({
     id: "usage",
@@ -25,9 +36,9 @@ export default definePluginApp((app) => {
     component: ProviderUsageButton,
   });
   app.slots.experimental_threadHeaderAction({
-    id: "workspace-usage",
-    title: "Workspace usage",
-    component: WorkspaceUsageButton,
+    id: "context-reminder",
+    title: "Context Reminder",
+    component: ReminderHeaderButton,
   });
   app.slots.threadPanelAction({
     id: HISTORY_ACTION,
