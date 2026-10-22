@@ -76,6 +76,15 @@ npm run core:refresh
 `npm run check` fails on a stale copy. Adapter code lives in `server.ts`,
 `server/engine/bb/`, `server/entrypoints/`, `skills/`, and `tests/`.
 
+## Install
+
+`.bb/plugins.json` at the repository root names this plugin `conductor`:
+
+```bash
+bb plugin install git:<repo-url>@main --plugin conductor
+bb plugin install path:/absolute/path/to/agent-plugins --plugin conductor
+```
+
 ## Development
 
 ```bash

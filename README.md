@@ -7,6 +7,7 @@ host-neutral core, and one adapter per host.
 packages/<plugin>/      the plugin's core: logic, stores, schemas and their tests
 paseo/<plugin>/         Paseo plugin (installable on its own)
 bb/<plugin>/            bb plugin (installable on its own)
+.bb/plugins.json        bb collection manifest: names each bb plugin
 ```
 
 Each adapter depends on its core with `"<plugin>": "file:../../packages/<plugin>"`
