@@ -86,7 +86,7 @@ instead of scattering them across application-wide technical-layer directories.
 
 ## Sources and applicability
 
-These rules are a nestkit synthesis; the sample layout is a default, not a
+These rules are a project synthesis; the sample layout is a default, not a
 framework requirement. References reviewed on 2026-09-27:
 
 - [Angular's style guide](https://angular.dev/style-guide) supports grouping

@@ -29,17 +29,18 @@ export function CodexReset({
   const consume = useRpc(consumeCodexReset);
   const cache = useQueryClient();
   const hasAttempt =
-    cache.getQueryData(["nestkit-codex-reset-attempt", host.id]) !== undefined;
+    cache.getQueryData(["essentials-codex-reset-attempt", host.id]) !==
+    undefined;
   const count = usage.resetCredits?.availableCount;
   const earliestExpiresAt = usage.resetCredits?.earliestExpiresAt;
   const available = usage.status === "ok" && count != null && count > 0;
   const mutation = useMutation({
-    mutationKey: ["nestkit-codex-reset", host.id],
+    mutationKey: ["essentials-codex-reset", host.id],
     retry: false,
     mutationFn: async () => {
       // The query survives closing the popover. Keep it on uncertain failures.
       const attempt = await cache.fetchQuery({
-        queryKey: ["nestkit-codex-reset-attempt", host.id],
+        queryKey: ["essentials-codex-reset-attempt", host.id],
         queryFn: () => prepare({}),
         staleTime: Infinity,
         gcTime: Infinity,
@@ -49,11 +50,11 @@ export function CodexReset({
       return consume({ ...attempt, confirmed: true });
     },
     onSuccess: async (result) => {
-      const queryKey = ["nestkit-usage", host.id, "chatgpt"];
+      const queryKey = ["essentials-usage", host.id, "chatgpt"];
       await cache.cancelQueries({ queryKey });
       cache.setQueryData(queryKey, result.usage);
       cache.removeQueries({
-        queryKey: ["nestkit-codex-reset-attempt", host.id],
+        queryKey: ["essentials-codex-reset-attempt", host.id],
         exact: true,
       });
       onUsageChange(result.usage);

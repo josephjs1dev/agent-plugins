@@ -39,7 +39,7 @@ test("Pi resolves daemon environment session path overrides", () => {
 });
 
 test("Pi scans nested JSONL read-only, deduplicates copies, skips links and tolerates partial lines", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "nestkit-pi-"));
+  const directory = await mkdtemp(join(tmpdir(), "essentials-pi-"));
 
   try {
     const nested = join(directory, "workspace");

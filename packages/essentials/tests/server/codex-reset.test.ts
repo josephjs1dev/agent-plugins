@@ -239,7 +239,7 @@ test("a failed quota refresh does not hide successful redemption or repeat it", 
 });
 
 test("Codex redemption uses only the account method and validates all responses", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "nestkit-codex-reset-"));
+  const directory = await mkdtemp(join(tmpdir(), "essentials-codex-reset-"));
   const binary = join(directory, "fake-codex");
   const idempotencyKey = randomUUID();
   const signal = new AbortController().signal;

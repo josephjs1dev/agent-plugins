@@ -106,7 +106,7 @@ function UsageDetails(props: UsagePopoverProps & { provider: Provider }) {
   const read = useRpc(readUsage);
   const forceRefresh = useRef(false);
   const query = useQuery({
-    queryKey: ["nestkit-usage", host.id, provider],
+    queryKey: ["essentials-usage", host.id, provider],
     queryFn: () => {
       const refresh = forceRefresh.current;
       forceRefresh.current = false;

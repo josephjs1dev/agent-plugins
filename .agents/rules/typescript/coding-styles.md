@@ -29,7 +29,7 @@ Backend-only work does not need that companion guide.
 - Use one formatter: the project's Prettier or Biome configuration. If no style
   exists, use two spaces, semicolons, single-quoted TypeScript strings,
   double-quoted JSX attributes, trailing commas, and an 80-column print width.
-  These are nestkit defaults, not TypeScript correctness requirements.
+  These are project defaults, not TypeScript correctness requirements.
 - Let the formatter handle wrapping and whitespace. Use braces for conditional
   and loop bodies; avoid nested ternaries and long expression chains.
 - For ESLint projects, start with typescript-eslint's `recommendedTypeChecked`
@@ -136,7 +136,7 @@ The example's error `cause` requires a compatible runtime and library target
 
 ## File size and extraction
 
-These are nestkit review thresholds for hand-written source, not language limits
+These are project review thresholds for hand-written source, not language limits
 or universal industry standards. Count nonblank, noncomment lines, including JSX.
 
 | Unit | Default guidance |
@@ -216,7 +216,7 @@ or universal industry standards. Count nonblank, noncomment lines, including JSX
 
 ## Sources and applicability
 
-These rules are a nestkit synthesis. Public projects differ on indentation,
+These rules are a project synthesis. Public projects differ on indentation,
 exports, and tooling; their repository-specific choices are not universal rules.
 References reviewed on 2026-09-27:
 

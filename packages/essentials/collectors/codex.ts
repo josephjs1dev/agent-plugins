@@ -180,7 +180,7 @@ function requestCodexAccount(
     send({
       id: 0,
       method: "initialize",
-      params: { clientInfo: { name: "nestkit_usage", version: "0.1.0" } },
+      params: { clientInfo: { name: "essentials_usage", version: "0.1.0" } },
     });
   });
 }

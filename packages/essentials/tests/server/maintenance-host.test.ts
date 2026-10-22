@@ -6,7 +6,7 @@ import { test } from "node:test";
 import { readHostIdentity } from "../../host-identity";
 
 test("host identity uses the daemon's persisted ID read-only and honors its override", async () => {
-  const home = await mkdtemp(join(tmpdir(), "nestkit-host-"));
+  const home = await mkdtemp(join(tmpdir(), "essentials-host-"));
   const path = join(home, "server-id");
 
   try {
@@ -33,7 +33,7 @@ test("host identity uses the daemon's persisted ID read-only and honors its over
 });
 
 test("missing or malformed identity is unavailable, never created or exposed in errors", async () => {
-  const home = await mkdtemp(join(tmpdir(), "nestkit-host-"));
+  const home = await mkdtemp(join(tmpdir(), "essentials-host-"));
   const unavailable = {
     message: "Could not identify this host. Check the host connection.",
   };

@@ -22,7 +22,7 @@ test("the data directory defaults to ~/.essentials and honors ESSENTIALS_HOME", 
 });
 
 test("a legacy directory moves once", async () => {
-  const root = await mkdtemp(join(tmpdir(), "nestkit-home-"));
+  const root = await mkdtemp(join(tmpdir(), "essentials-home-"));
 
   try {
     const legacy = join(root, "paseo", "storage", "provider-usage");
@@ -39,7 +39,7 @@ test("a legacy directory moves once", async () => {
 });
 
 test("an existing target wins and a missing legacy directory is ignored", async () => {
-  const root = await mkdtemp(join(tmpdir(), "nestkit-home-"));
+  const root = await mkdtemp(join(tmpdir(), "essentials-home-"));
 
   try {
     const legacy = join(root, "legacy");

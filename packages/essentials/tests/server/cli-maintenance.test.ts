@@ -208,7 +208,7 @@ test("npm updates use the detected prefix and a fixed version argument", async (
 });
 
 test("standalone detection retains the launcher symlink and rejects custom wrappers", async () => {
-  const root = await realpath(await mkdtemp(join(tmpdir(), "nestkit-cli-")));
+  const root = await realpath(await mkdtemp(join(tmpdir(), "essentials-cli-")));
 
   try {
     const dir = join(root, "packages", "standalone", "1.2.3", "bin");

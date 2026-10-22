@@ -132,7 +132,7 @@ test(
 );
 
 test("Codex cumulative log events become daily deltas, not repeated session totals", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "nestkit-codex-history-"));
+  const directory = await mkdtemp(join(tmpdir(), "essentials-codex-history-"));
 
   try {
     const event = (timestamp: string, input: number, output: number) => ({
@@ -185,7 +185,7 @@ test("Codex cumulative log events become daily deltas, not repeated session tota
 });
 
 test("OpenCode v1 and v2 history is read-only, provider-filtered, and migration-deduplicated", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "nestkit-go-history-"));
+  const directory = await mkdtemp(join(tmpdir(), "essentials-go-history-"));
   const path = join(directory, "opencode.db");
   const db = new DatabaseSync(path);
 
@@ -253,7 +253,7 @@ test("OpenCode v1 and v2 history is read-only, provider-filtered, and migration-
 });
 
 test("history survives reload, filters workspace sessions, and retains data after source failure", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "nestkit-history-store-"));
+  const directory = await mkdtemp(join(tmpdir(), "essentials-history-store-"));
   const now = new Date().toISOString();
   const row: HistoryRow = {
     provider: "chatgpt",
@@ -310,7 +310,7 @@ test("history survives reload, filters workspace sessions, and retains data afte
 });
 
 test("provider and workspace readers share scans and cached local history", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "nestkit-history-cache-"));
+  const directory = await mkdtemp(join(tmpdir(), "essentials-history-cache-"));
   const collected: string[] = [];
   const store = createHistoryStore(
     directory,
@@ -341,7 +341,9 @@ test("provider and workspace readers share scans and cached local history", asyn
 });
 
 test("corrupt stored history is preserved", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "nestkit-history-corrupt-"));
+  const directory = await mkdtemp(
+    join(tmpdir(), "essentials-history-corrupt-"),
+  );
 
   try {
     await writeFile(join(directory, "history.json"), "broken data");
@@ -364,7 +366,7 @@ test("corrupt stored history is preserved", async () => {
 });
 
 test("scopes and pages share source scans, retain rows and warnings, and satisfy the RPC", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "nestkit-history-scopes-"));
+  const directory = await mkdtemp(join(tmpdir(), "essentials-history-scopes-"));
   const now = new Date().toISOString();
   const collected: string[] = [];
   const rows: HistoryRow[] = Array.from({ length: 25 }, (_, index) => ({

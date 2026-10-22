@@ -184,7 +184,7 @@ test("credit-only Codex accounts return their balance and share the quota cache"
 });
 
 test("Codex handshakes and reads limits without starting an agent turn", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "nestkit-usage-test-"));
+  const directory = await mkdtemp(join(tmpdir(), "essentials-usage-test-"));
   const binary = join(directory, "fake-codex");
 
   try {

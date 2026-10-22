@@ -70,9 +70,9 @@ Run `git diff --check` for changes across the repository.
 
 ## Canonical instructions
 
-Keep shared rules and personas in `.agents/`. Reserve `.codex/` for native
-configuration and command permissions. Edit `AGENTS.md` as the canonical project
-instruction file and preserve the `CLAUDE.md` symlink to it.
+Keep shared rules and personas in `.agents/`. Reserve `.codex/` and `.claude/`
+for native configuration and command permissions. Edit `AGENTS.md` as the
+canonical project instruction file and preserve the `CLAUDE.md` symlink to it.
 
 ## Commit and push
 

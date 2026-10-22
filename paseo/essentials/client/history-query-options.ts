@@ -10,7 +10,7 @@ export function historyQueryOptions(
   scope: HistoryScope = "workspace",
 ) {
   const filterKey = [
-    "nestkit-history",
+    "essentials-history",
     hostId,
     workspaceId,
     provider,

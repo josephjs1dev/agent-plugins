@@ -43,7 +43,7 @@ function MaintenancePage(props: PluginSurfaceProps) {
   const check = useRpc(checkCliUpdates);
   const update = useRpc(applyCliUpdate);
   const refresh = useRpc(refreshCliModels);
-  const key = ["nestkit-cli-maintenance", host.id];
+  const key = ["essentials-cli-maintenance", host.id];
   const status = useQuery({
     queryKey: key,
     queryFn: () => read({}),
@@ -57,7 +57,7 @@ function MaintenancePage(props: PluginSurfaceProps) {
     },
     retry: false,
   });
-  const modelKey = ["nestkit-cli-models", host.id];
+  const modelKey = ["essentials-cli-models", host.id];
   const models = useQuery({
     queryKey: modelKey,
     queryFn: () => paseo.providers.snapshot(),
@@ -67,7 +67,7 @@ function MaintenancePage(props: PluginSurfaceProps) {
     () =>
       paseo.providers.subscribe(() => {
         void queryClient.invalidateQueries({
-          queryKey: ["nestkit-cli-models", host.id],
+          queryKey: ["essentials-cli-models", host.id],
         });
       }),
     [paseo, queryClient, host.id],
