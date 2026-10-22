@@ -47,7 +47,9 @@ Workspace scope counts sessions started by that workspace's Paseo agents, so
 workspaces sharing a checkout stay separate. Essentials saves these session links
 on the daemon host so deleted agents remain attributed. Sessions started outside
 Paseo appear only under all workspaces. Records use UTC days and the cache retains
-90 days. Unreadable sources produce partial-data warnings.
+90 days. Unreadable sources produce partial-data warnings. The cache and session
+links live in `$ESSENTIALS_HOME/provider-usage` (default `~/.essentials`).
+Essentials moves an older `$PASEO_HOME/storage/provider-usage` there once.
 
 Claude history reads `<CLAUDE_CONFIG_DIR>/projects` (default `~/.claude/projects`),
 with `CLAUDE_USAGE_PROJECTS_DIR` available as an explicit projects-directory override.

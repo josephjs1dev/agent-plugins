@@ -1,4 +1,3 @@
-import { homedir } from "node:os";
 import { join } from "node:path";
 import type { HistoryRow, HistoryScope } from "./history";
 import { summarizeHistory } from "./history-analysis";
@@ -7,14 +6,13 @@ import { usageCollectors } from "./collectors/index";
 import type { UsageCollector } from "./collectors/types";
 import { withCodexCostEstimate } from "./codex-cost-estimate";
 import { createHistoryCache } from "./history-cache";
+import { essentialsHome } from "./home";
 
 const SCAN_WARNING =
   "Could not refresh all local usage records. Showing available sources and previously stored data, if available.";
 
 export function historyDirectory(): string {
-  const paseoHome = process.env.PASEO_HOME ?? join(homedir(), ".paseo");
-
-  return join(paseoHome, "storage", "provider-usage");
+  return join(essentialsHome(), "provider-usage");
 }
 
 export function createHistoryStore(

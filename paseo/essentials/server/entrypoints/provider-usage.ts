@@ -1,4 +1,6 @@
 import type { PluginServerContext } from "@getpaseo/plugin/server";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { readUsage } from "../../shared/usage-rpc";
 import { createUsageReader } from "essentials/usage-reader";
 import { readHistory } from "../../shared/history-rpc";
@@ -10,6 +12,7 @@ import {
   consumeCodexReset,
 } from "../../shared/codex-reset-rpc";
 import { createCodexResetter } from "essentials/codex-resetter";
+import { adoptLegacyDirectory } from "essentials/home";
 
 const WORKSPACE_WARNING =
   "Could not read Paseo agents. Workspace usage uses previously saved session links.";
@@ -17,8 +20,16 @@ const WORKSPACE_WARNING =
 export default function contribute(server: PluginServerContext) {
   const reader = createUsageReader();
   const resetter = createCodexResetter(reader);
-  const history = createHistoryStore();
-  const workspaceSessions = createWorkspaceSessions(historyDirectory());
+  const directory = adoptLegacyDirectory(
+    historyDirectory(),
+    join(
+      process.env.PASEO_HOME ?? join(homedir(), ".paseo"),
+      "storage",
+      "provider-usage",
+    ),
+  );
+  const history = createHistoryStore(directory);
+  const workspaceSessions = createWorkspaceSessions(directory);
   server.handle(readUsage, ({ provider, refresh }) =>
     reader.read(provider, refresh),
   );
