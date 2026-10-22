@@ -18,8 +18,8 @@ import {
   resolveProfileRef,
   type ConductorProfile,
   type ProfileDraft,
-} from "../shared/symphonies/profiles";
-import { SymphonyError } from "../shared/symphonies/errors";
+} from "conductor/symphonies/profiles";
+import { SymphonyError } from "conductor/symphonies/errors";
 import {
   SYNC_TARGET_ALIAS_REASON,
   profileStoreSource,
@@ -27,9 +27,9 @@ import {
   type PaseoProfileRecord,
   type PaseoProfilesPort,
   type ProfilesSource,
-} from "../server/core/symphonies/profile-catalog";
+} from "conductor/symphonies/profile-catalog";
 import type { SyncProfilesResult } from "../shared/symphonies/profiles-rpc";
-import { readBoundedHandle } from "../server/core/files";
+import { readBoundedHandle } from "conductor/files";
 import { providerCatalog } from "../server/engine/paseo/provider-catalog";
 import type { PaseoApi } from "../server/engine/paseo/types";
 

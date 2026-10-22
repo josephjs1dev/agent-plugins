@@ -1,7 +1,7 @@
 import { useRpc } from "@getpaseo/plugin/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getAgents } from "../../shared/agents/rpc";
-import type { AgentsSnapshot } from "../../shared/agents/models";
+import type { AgentsSnapshot } from "conductor/agents/models";
 import { useDirectoryInvalidation } from "../paseo/use-directory";
 
 export const agentsQueryKey = (hostId: string) =>

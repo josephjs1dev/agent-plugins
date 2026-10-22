@@ -9,8 +9,8 @@ import { listSymphonies } from "../../shared/symphonies/rpc";
 import type {
   StoredSymphony,
   SymphonyListEntry,
-} from "../../shared/symphonies/models";
-import { symphonyStatusLabel } from "../../shared/symphonies/models";
+} from "conductor/symphonies/models";
+import { symphonyStatusLabel } from "conductor/symphonies/models";
 import { SymphoniesPillContent } from "./pills-popover";
 
 /** A symphony is ongoing while it plans, waits, runs, or needs attention. */

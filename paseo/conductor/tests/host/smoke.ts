@@ -5,7 +5,7 @@ import { join, resolve } from "node:path";
 // Integration harness only: plugin production code uses the public PaseoApi.
 import { DaemonClient } from "@getpaseo/client/internal/daemon-client";
 import { createPaseoApi } from "@getpaseo/client";
-import { snapshotSchema, answerResultSchema } from "../../shared/agents/models";
+import { snapshotSchema, answerResultSchema } from "conductor/agents/models";
 import { observeDirectory } from "../../client/paseo/observation";
 
 const endpoint = process.env.CONDUCTOR_TEST_URL;

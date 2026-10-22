@@ -1,9 +1,9 @@
-import type { SymphonyHost } from "../../../shared/symphonies/host";
+import type { SymphonyHost } from "conductor/symphonies/host";
 import {
   workerRuntime,
   type ProfileLoader,
   type WorkerRuntime,
-} from "../../core/symphonies/workers";
+} from "conductor/symphonies/workers";
 import { toAgentProfile, toAgentSnapshot } from "./mapping";
 import type { PaseoApi } from "./types";
 

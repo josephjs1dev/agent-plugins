@@ -9,13 +9,13 @@ import {
   type Score,
   type StoredSymphony,
   type UnresolvedItem,
-} from "../../shared/symphonies/models";
+} from "conductor/symphonies/models";
 import {
   attemptLoop,
   currentLoop,
   loopVerdict,
-} from "../../shared/symphonies/score";
-import type { TaskStateKey } from "../../shared/symphonies/task-state";
+} from "conductor/symphonies/score";
+import type { TaskStateKey } from "conductor/symphonies/task-state";
 
 /** What a finished loop reports at the top of its History section. */
 export type HistoryLoopVerdict = "succeeded" | "needs-changes" | "attention";

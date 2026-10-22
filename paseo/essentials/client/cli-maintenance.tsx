@@ -20,7 +20,7 @@ import {
   cliNames,
   type CliId,
   type Maintenance,
-} from "../shared/cli-maintenance";
+} from "essentials/cli-maintenance";
 import {
   applyCliUpdate,
   checkCliUpdates,

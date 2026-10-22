@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import type { PluginTheme } from "@getpaseo/plugin";
-import { ageLabel } from "../../shared/agents/attention";
-import { type SymphonyListEntry } from "../../shared/symphonies/models";
+import { ageLabel } from "conductor/agents/attention";
+import { type SymphonyListEntry } from "conductor/symphonies/models";
 import { StatusMarker, symphonyStatusPresentation } from "../ui/status";
 import { SymphonyProgress } from "../ui/progress";
 import { cardSurface } from "../ui/card";

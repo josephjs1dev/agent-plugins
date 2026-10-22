@@ -1,7 +1,7 @@
 import { Text, View } from "react-native";
 import type { PluginTheme } from "@getpaseo/plugin";
-import type { ReminderThresholds } from "../../shared/context-reminder/reminder-policy";
-import type { Character } from "../../shared/context-reminder/sprite";
+import type { ReminderThresholds } from "essentials/context-reminder/reminder-policy";
+import type { Character } from "essentials/context-reminder/sprite";
 import { PixelSprite } from "./pixel-sprite";
 import { thresholdZones, zoneRange } from "./threshold-bar";
 

@@ -4,15 +4,15 @@ import type { PaseoApi } from "../server/engine/paseo/types";
 import {
   LaunchRejectedError,
   SymphonyError,
-} from "../shared/symphonies/errors";
+} from "conductor/symphonies/errors";
 import { paseoWorkers } from "../server/engine/paseo/symphony-host";
-import type { WorkerLaunch } from "../server/core/symphonies/workers";
+import type { WorkerLaunch } from "conductor/symphonies/workers";
 import {
   nextLaunchCheckDelay,
   LAUNCH_CHECK_DELAYS_MS,
-} from "../server/core/symphonies/workers";
+} from "conductor/symphonies/workers";
 import { agent } from "./paseo-fixtures";
-import type { ConductorProfile } from "../shared/symphonies/profiles";
+import type { ConductorProfile } from "conductor/symphonies/profiles";
 
 type CreateInput = Parameters<
   ReturnType<PaseoApi["workspaces"]["ref"]>["agents"]["create"]

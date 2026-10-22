@@ -1,5 +1,5 @@
-import type { HistoryScope } from "../shared/history";
-import type { Provider } from "../shared/providers";
+import type { HistoryScope } from "essentials/history";
+import type { Provider } from "essentials/providers";
 
 export function historyQueryOptions(
   hostId: string,

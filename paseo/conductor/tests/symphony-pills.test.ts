@@ -8,8 +8,8 @@ import type {
   PluginButtonContentProps,
   PluginComposerPillContribution,
 } from "@getpaseo/plugin/client";
-import { symphonyStatusLabel } from "../shared/symphonies/models";
-import type { SymphonyListEntry } from "../shared/symphonies/models";
+import { symphonyStatusLabel } from "conductor/symphonies/models";
+import type { SymphonyListEntry } from "conductor/symphonies/models";
 import type {
   registerSymphonyPills,
   SymphonyPillOptions,

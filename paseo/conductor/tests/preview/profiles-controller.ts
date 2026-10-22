@@ -10,7 +10,7 @@ import {
   type ProfileStore,
   type ProfilesState,
   type SaveProfilesResult,
-} from "../../shared/symphonies/profiles";
+} from "conductor/symphonies/profiles";
 import {
   providerCatalogSchema,
   type ImportSkip,
@@ -22,7 +22,7 @@ import type {
   SyncPreviewEntry,
   SyncProfilesResult,
 } from "../../shared/symphonies/profiles-rpc";
-import { isClassifiedRouting } from "../../shared/symphonies/routing";
+import { isClassifiedRouting } from "conductor/symphonies/routing";
 
 /**
  * One shared preview engine for the profiles store: the same revision,

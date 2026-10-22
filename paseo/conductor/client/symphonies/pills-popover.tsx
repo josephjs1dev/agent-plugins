@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import type { PluginTheme } from "@getpaseo/plugin";
-import type { SymphonyListEntry } from "../../shared/symphonies/models";
+import type { SymphonyListEntry } from "conductor/symphonies/models";
 import { StatusMarker, symphonyStatusPresentation } from "../ui/status";
 
 /**

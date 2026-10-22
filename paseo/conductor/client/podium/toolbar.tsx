@@ -2,13 +2,13 @@ import { useState, useSyncExternalStore } from "react";
 import { ScrollView, Text, TextInput, View } from "react-native";
 import type { PluginTheme } from "@getpaseo/plugin";
 import { Icon } from "@getpaseo/plugin/client/react-native";
-import type { AgentsSnapshot } from "../../shared/agents/models";
+import type { AgentsSnapshot } from "conductor/agents/models";
 import {
   visibleItems,
   isSnoozed,
   category,
   type Filter,
-} from "../../shared/agents/attention";
+} from "conductor/agents/attention";
 import type { PodiumSession, ViewState } from "./session";
 import { Button, Label, Notice, rowStyle } from "../ui/controls";
 import { visibleSymphonies, type SymphoniesData } from "../symphonies/list";

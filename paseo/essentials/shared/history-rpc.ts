@@ -1,4 +1,4 @@
 import { defineRpc } from "@getpaseo/plugin";
-import { readHistoryDefinition } from "./history";
+import { readHistoryDefinition } from "essentials/history";
 
 export const readHistory = defineRpc(readHistoryDefinition);

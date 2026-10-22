@@ -11,18 +11,15 @@ import {
   type StoredSymphony,
   type TaskDefinition,
   type TaskFinding,
-} from "../../shared/symphonies/models";
-import {
-  taskState,
-  type TaskStateKey,
-} from "../../shared/symphonies/task-state";
-import { attemptLoop } from "../../shared/symphonies/score";
+} from "conductor/symphonies/models";
+import { taskState, type TaskStateKey } from "conductor/symphonies/task-state";
+import { attemptLoop } from "conductor/symphonies/score";
 import {
   attemptMetrics,
   type DurationTotals,
   type TokenSum,
   type TokenTotals,
-} from "../../shared/symphonies/metrics";
+} from "conductor/symphonies/metrics";
 import {
   groupedTaskState,
   hasLoopGroups,

@@ -1,7 +1,7 @@
 import type {
   PaseoProfileRecord,
   PaseoProfilesPort,
-} from "../../core/symphonies/profile-catalog";
+} from "conductor/symphonies/profile-catalog";
 import type { PaseoApi } from "./types";
 
 // The contract lives in domain code so server/symphonies never imports a

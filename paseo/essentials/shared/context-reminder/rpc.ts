@@ -4,7 +4,7 @@ import {
   demoReminderDefinition,
   readReminderConfigDefinition,
   snoozeReminderDefinition,
-} from "./contracts";
+} from "essentials/context-reminder/contracts";
 
 export const readReminderConfig = defineRpc(readReminderConfigDefinition);
 export const snoozeReminder = defineRpc(snoozeReminderDefinition);

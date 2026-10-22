@@ -1,8 +1,8 @@
 import { useRpc } from "@getpaseo/plugin/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { type HistoryScope } from "../shared/history";
+import { type HistoryScope } from "essentials/history";
 import { readHistory } from "../shared/history-rpc";
-import type { Provider } from "../shared/providers";
+import type { Provider } from "essentials/providers";
 import { historyQueryOptions } from "./history-query-options";
 
 export function useHistoryQuery(

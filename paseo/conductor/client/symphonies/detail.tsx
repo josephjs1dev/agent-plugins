@@ -7,10 +7,10 @@ import {
   latestAttempt,
   type SymphonyContext,
   type StoredSymphony,
-} from "../../shared/symphonies/models";
-import { currentLoop } from "../../shared/symphonies/score";
-import { symphonyMetrics } from "../../shared/symphonies/metrics";
-import { taskState } from "../../shared/symphonies/task-state";
+} from "conductor/symphonies/models";
+import { currentLoop } from "conductor/symphonies/score";
+import { symphonyMetrics } from "conductor/symphonies/metrics";
+import { taskState } from "conductor/symphonies/task-state";
 import { StatusMarker, symphonyStatusPresentation } from "../ui/status";
 import { SymphonyProgress } from "../ui/progress";
 import {

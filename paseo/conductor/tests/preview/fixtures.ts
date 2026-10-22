@@ -1,6 +1,6 @@
-import type { AgentItem, AgentsSnapshot } from "../../shared/agents/models";
+import type { AgentItem, AgentsSnapshot } from "conductor/agents/models";
 import type { PluginTheme } from "@getpaseo/plugin";
-import { requestForm } from "../../shared/agents/questions";
+import { requestForm } from "conductor/agents/questions";
 
 export const light: PluginTheme = {
   colors: {

@@ -1,15 +1,15 @@
 import type { PluginServerContext } from "@getpaseo/plugin/server";
 import { readUsage } from "../../shared/usage-rpc";
-import { createUsageReader } from "../core/usage-reader";
+import { createUsageReader } from "essentials/usage-reader";
 import { readHistory } from "../../shared/history-rpc";
-import { sessionKey } from "../../shared/history-display";
-import { createHistoryStore, historyDirectory } from "../core/history-store";
+import { sessionKey } from "essentials/history-display";
+import { createHistoryStore, historyDirectory } from "essentials/history-store";
 import { createWorkspaceSessions } from "../engine/paseo/workspace-sessions";
 import {
   prepareCodexReset,
   consumeCodexReset,
 } from "../../shared/codex-reset-rpc";
-import { createCodexResetter } from "../core/codex-resetter";
+import { createCodexResetter } from "essentials/codex-resetter";
 
 const WORKSPACE_WARNING =
   "Could not read Paseo agents. Workspace usage uses previously saved session links.";

@@ -1,7 +1,7 @@
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import type { PluginButtonContentProps } from "@getpaseo/plugin/client";
 import { Icon } from "@getpaseo/plugin/client/react-native";
-import { cliNames, type CliStatus } from "../shared/cli-maintenance";
+import { cliNames, type CliStatus } from "essentials/cli-maintenance";
 
 type Theme = PluginButtonContentProps["theme"];
 

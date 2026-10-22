@@ -2,8 +2,8 @@ import { useState } from "react";
 import type { PluginTheme } from "@getpaseo/plugin";
 import { Icon } from "@getpaseo/plugin/client/react-native";
 import { Pressable, Text, View } from "react-native";
-import { providerDefinitions, type Provider } from "../shared/providers";
-import type { Usage } from "../shared/usage";
+import { providerDefinitions, type Provider } from "essentials/providers";
+import type { Usage } from "essentials/usage";
 import { ProviderLogo } from "./provider-logo";
 
 export function UsageUnavailable({

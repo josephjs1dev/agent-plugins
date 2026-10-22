@@ -206,15 +206,13 @@ npm ci
 npm run check
 ```
 
-`npm ci` uses this plugin's lockfile. `check` fails on core drift, then runs type
-checking, ESLint, Prettier, and tests using temporary files and fake I/O, without real provider credentials.
+`npm ci` uses this plugin's lockfile. `check` runs type checking, ESLint, Prettier, and tests using temporary files and fake I/O, without real provider credentials.
 
 | Path                          | Responsibility                                                          |
 | ----------------------------- | ----------------------------------------------------------------------- |
 | `index.client.tsx`, `client/` | Paseo app contributions, React Native UI, and query state.              |
 | `index.server.ts`, `server/`  | Entrypoints: RPC handlers, hooks, and Paseo client glue.                |
-| `server/core/`                | Generated: core modules that use Node (collectors, history, CLIs).      |
-| `shared/`                     | Generated Node-free core modules, plus the `defineRpc` wrappers.        |
+| `shared/`                     | The `defineRpc` and `defineSettings` wrappers around core definitions.  |
 | `tests/`                      | Collector, history, quota, maintenance, navigation, and reminder tests. |
 
 - Read the repository's [AGENTS.md](../../AGENTS.md),
@@ -228,24 +226,29 @@ checking, ESLint, Prettier, and tests using temporary files and fake I/O, withou
 - Validate external records and RPC data, bound I/O, and avoid logging credentials.
 - Keep dependencies pinned and update `package-lock.json` when changing them.
   Update the manifest's Paseo requirement if a feature needs a newer host API.
-- Before submitting, run `npm run check` here and `git diff --check`.
+- Before submitting, run `npm run check` here and in `packages/essentials/`,
+  and `git diff --check`.
 
-### Core files
+### Core
 
-`.core-files` lists the host-neutral core: Node-free modules in `shared/`,
-Node modules in `server/core/`, and their tests. This adapter holds the
-source. Other host adapters commit a copy at the same paths, made by
-`node scripts/sync-core.mjs essentials <host>`.
+The host-neutral core is the `essentials` package in
+[`packages/essentials/`](../../packages/essentials/). This adapter depends on
+it with `file:../../packages/essentials`, so npm links it as a symlink and core
+edits are live. The manifest `build` step runs `npm install` on a Git install.
 
-- Do not import a host SDK in core files. Lint enforces this rule.
+- Do not import a host SDK in the core. Lint enforces this rule.
 - Reach the host through the `host.ts` ports.
 - Keep the RPC transport in the adapter. The core exports plain
   `<name>Definition` objects, and `shared/**/*rpc.ts` wraps them with
   `defineRpc`/`defineSettings`.
-- Add a new core file to `.core-files`.
+- Import core test fixtures by relative path
+  (`../../packages/essentials/tests/...`).
+- Server code imports Paseo types from `@getpaseo/plugin`, not
+  `@getpaseo/client`. The plugin compiler cannot resolve `@getpaseo/client` on
+  a Git install, because npm omits devDependencies.
 
-`tests/client/bundle-boundaries.test.ts` checks Paseo's bundle rules: `shared/` imports only shared code, and
-neither bundle reaches the other runtime's modules.
+`tests/client/bundle-boundaries.test.ts` checks Paseo's bundle rules. `shared/` and the app bundle reach only
+Node-free core modules, and neither bundle reaches the other runtime's modules.
 
 Paseo-only code: `client/`, `index.*`, `server/engine/paseo/` (workspace
 sessions and model refresh through the Paseo client), `server/entrypoints/`

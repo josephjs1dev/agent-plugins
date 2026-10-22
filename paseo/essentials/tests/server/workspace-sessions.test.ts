@@ -8,11 +8,11 @@ import {
   createWorkspaceSessions,
   type ListAgents,
 } from "../../server/engine/paseo/workspace-sessions";
-import { createHistoryStore } from "../../server/core/history-store";
-import { writeSavedHistory } from "../../server/core/history-files";
-import { sessionKey } from "../../shared/history-display";
-import type { HistoryRow } from "../../shared/history";
-import { fakeCollectors } from "../history-fixtures";
+import { createHistoryStore } from "essentials/history-store";
+import { writeSavedHistory } from "essentials/history-files";
+import { sessionKey } from "essentials/history-display";
+import type { HistoryRow } from "essentials/history";
+import { fakeCollectors } from "../../../../packages/essentials/tests/history-fixtures";
 
 const NOW = Date.parse("2026-10-09T12:00:00Z");
 const DAY = 86_400_000;

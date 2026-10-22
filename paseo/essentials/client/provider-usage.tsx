@@ -9,8 +9,8 @@ import {
   providerDefinitions,
   providerIds,
   type Provider,
-} from "../shared/providers";
-import { usageLabel, type Usage } from "../shared/usage";
+} from "essentials/providers";
+import { usageLabel, type Usage } from "essentials/usage";
 import { readUsage } from "../shared/usage-rpc";
 import { UsagePopover } from "./usage";
 import { UsageHistoryPage } from "./history-page";

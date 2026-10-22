@@ -14,7 +14,7 @@ import {
   saveProfilesResultSchema,
   storeIssues,
   type ConductorProfile,
-} from "../shared/symphonies/profiles";
+} from "conductor/symphonies/profiles";
 import {
   importProfilesResultSchema,
   listProfileProviders,
@@ -28,8 +28,8 @@ import {
   syncProfiles as syncProfilesRpc,
   syncProfilesResultSchema,
 } from "../shared/symphonies/profiles-rpc";
-import { attemptSchema, symphonySchema } from "../shared/symphonies/models";
-import { storedSymphony } from "./symphony-fixtures";
+import { attemptSchema, symphonySchema } from "conductor/symphonies/models";
+import { storedSymphony } from "../../../packages/conductor/tests/symphony-fixtures";
 
 const smallId = "11111111-1111-4111-8111-111111111111";
 const bigId = "22222222-2222-4222-8222-222222222222";

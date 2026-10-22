@@ -3,17 +3,17 @@
 ## Project context
 
 agent-plugins holds plugins for several agent hosts. Each plugin has one
-adapter per host in `<host>/<plugin>/`. The Paseo adapter holds the source of
-the plugin's host-neutral core. The plugins are Conductor (a Paseo adapter in
-`paseo/conductor/`, with a bb adapter planned in `bb/conductor/`) and
+adapter per host in `<host>/<plugin>/`. The npm package `packages/<plugin>/`
+holds the plugin's host-neutral core. The plugins are Conductor (a Paseo adapter in
+`paseo/conductor/`, with an experimental bb adapter in `bb/conductor/`) and
 Essentials (a Paseo adapter in `paseo/essentials/`).
 
-`paseo/<plugin>/.core-files` lists the core files: Node-free modules in
-`shared/`, Node modules in `server/core/`, and their tests. Hosts install one
-plugin directory on its own. So every other adapter commits a copy of these
-files at the same paths, made by `scripts/sync-core.mjs`. Edit core files only
-in the Paseo adapter, then run `node scripts/sync-core.mjs <plugin> <host>`. Conductor data lives in
-`$CONDUCTOR_HOME` (default `~/.conductor`) for every host.
+Each adapter depends on its core with `"<plugin>": "file:../../packages/<plugin>"`
+and imports core modules by name, such as `conductor/symphonies/commands`.
+Paseo links the package as a symlink. bb copies it (`install-links=true`),
+because bb installs only the plugin directory. Edit the core only in
+`packages/<plugin>/`. Conductor data lives in `$CONDUCTOR_HOME` (default
+`~/.conductor`) for every host.
 
 ## Always-on rules
 
@@ -46,21 +46,24 @@ do not load the other persona as a fallback.
 
 Read [README.md](README.md) for the layout and plugin catalog. Before changing
 Essentials, read [the Paseo README](paseo/essentials/README.md). Before changing
-Conductor, read [the Paseo README](paseo/conductor/README.md).
+Conductor, read [the Paseo README](paseo/conductor/README.md). Before changing
+the bb Conductor adapter, also read [its README](bb/conductor/README.md).
 For frontend work, also read
 [Frontend Coding Styles](.agents/rules/typescript/frontend-styles.md).
 
-Put all plugin logic in core files. Core files have no entrypoints. Other
-adapter `server/` code holds only entrypoints and host glue that call the core.
-Keep host SDK imports out of core files. Domain code reaches a host through its
-`host.ts` ports. Add a new core file to `.core-files`. Keep each adapter independently installable, with
+Put all plugin logic in the core package. The core has no entrypoints. Adapter
+code holds only entrypoints and host glue that call the core. Keep host SDK
+imports out of the core. Domain code reaches a host through its `host.ts`
+ports. Adapter tests import core test fixtures by relative path, not through
+`node_modules`. Keep each adapter independently installable, with
 its own manifest, package, lockfile, runtime entries, README, and validation
 scripts. Keep dependencies pinned and update the lockfile when they change.
 
 ## Validation
 
-Run `npm run check` in `<host>/<plugin>/`. For a non-Paseo adapter, also run
-`node scripts/sync-core.mjs <plugin> <host> --check`. The check runs type checking, linting, formatting checks, and tests. Tests use temporary
+Run `npm run check` in `packages/<plugin>/` and in each changed
+`<host>/<plugin>/`. In bb adapters, run `npm run core:refresh` after a core
+edit. The bb check fails on a stale copy. The check runs type checking, linting, formatting checks, and tests. Tests use temporary
 files and fake processes/HTTP responses; they do not require real credentials.
 Live installation, reload, and visual verification are separate actions.
 Run `git diff --check` for changes across the repository.

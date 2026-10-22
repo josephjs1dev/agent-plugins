@@ -6,7 +6,7 @@ import {
   latestAttempt,
   type StoredSymphony,
   type TaskDefinition,
-} from "../../shared/symphonies/models";
+} from "conductor/symphonies/models";
 import {
   GRAPH_ARROW,
   GRAPH_LINE,
@@ -15,13 +15,10 @@ import {
   type GraphEdgeLayout,
   type GraphPoint,
   type GraphLayoutSummary,
-} from "../../shared/symphonies/layout";
-import {
-  taskState,
-  type TaskStateKey,
-} from "../../shared/symphonies/task-state";
-import { conflictReason } from "../../shared/symphonies/score";
-import type { ConductorProfile } from "../../shared/symphonies/profiles";
+} from "conductor/symphonies/layout";
+import { taskState, type TaskStateKey } from "conductor/symphonies/task-state";
+import { conflictReason } from "conductor/symphonies/score";
+import type { ConductorProfile } from "conductor/symphonies/profiles";
 import type { ProviderCatalog } from "../../shared/symphonies/profiles-rpc";
 import { Button } from "../ui/controls";
 import {

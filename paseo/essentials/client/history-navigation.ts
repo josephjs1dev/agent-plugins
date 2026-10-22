@@ -1,4 +1,4 @@
-import type { Provider } from "../shared/providers";
+import type { Provider } from "essentials/providers";
 
 export interface HistorySelection {
   provider: Provider;

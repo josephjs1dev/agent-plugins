@@ -5,32 +5,29 @@ import { join } from "node:path";
 import { z } from "zod";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { COMMAND_LIMITS } from "../shared/commands/limits";
+import { COMMAND_LIMITS } from "conductor/commands/limits";
 import {
   agentCommandRequestSchema,
   symphonyCommandSchema,
-} from "../shared/symphonies/commands";
-import { commandServer } from "../server/core/commands/server";
-import { symphonyAck } from "../shared/commands/ack";
-import { symphonyExecution } from "../server/core/symphonies/execution";
-import {
-  contentHash,
-  fileSymphonyStore,
-} from "../server/core/symphonies/store";
+} from "conductor/symphonies/commands";
+import { commandServer } from "conductor/commands/server";
+import { symphonyAck } from "conductor/commands/ack";
+import { symphonyExecution } from "conductor/symphonies/execution";
+import { contentHash, fileSymphonyStore } from "conductor/symphonies/store";
 import { testDirectory } from "./paseo-fixtures";
 import {
   boundArgs,
   boundMcpClient as client,
   toolResultSchema,
-} from "./mcp-client";
+} from "../../../packages/conductor/tests/mcp-client";
 import {
   fixtureAttempt,
   fixtureLaunch,
   planContext,
   storedSymphony,
   task,
-} from "./symphony-fixtures";
-import type { TaskReport } from "../shared/symphonies/models";
+} from "../../../packages/conductor/tests/symphony-fixtures";
+import type { TaskReport } from "conductor/symphonies/models";
 
 const allTools = symphonyCommandSchema.options
   .map((schema) => schema.shape.kind.value)

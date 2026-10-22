@@ -2,13 +2,13 @@ import { Text, View } from "react-native";
 import { Icon } from "@getpaseo/plugin/client/react-native";
 import type { PluginTheme } from "@getpaseo/plugin";
 import type { PluginIconProps } from "@getpaseo/plugin/client/react-native";
-import type { AgentItem } from "../../shared/agents/models";
-import type { StoredSymphony } from "../../shared/symphonies/models";
-import { symphonyStatusLabel } from "../../shared/symphonies/models";
+import type { AgentItem } from "conductor/agents/models";
+import type { StoredSymphony } from "conductor/symphonies/models";
+import { symphonyStatusLabel } from "conductor/symphonies/models";
 import type {
   TaskDisplayState,
   TaskStateKey,
-} from "../../shared/symphonies/task-state";
+} from "conductor/symphonies/task-state";
 
 /**
  * Semantic presentation of a status: which host Lucide icon to show, which

@@ -1,15 +1,15 @@
-import { harnessDefinitions } from "../shared/harnesses";
+import { harnessDefinitions } from "essentials/harnesses";
 import { useState } from "react";
 import type { PluginHostProps } from "@getpaseo/plugin/client";
 import { Icon } from "@getpaseo/plugin/client/react-native";
 import { Pressable, Text, View } from "react-native";
-import type { History, Totals } from "../shared/history";
+import type { History, Totals } from "essentials/history";
 import {
   sessionKey,
   compactTokens,
   formatCostEstimate,
   totalTokens,
-} from "../shared/history-display";
+} from "essentials/history-display";
 import {
   HistoryAction,
   HistorySection,

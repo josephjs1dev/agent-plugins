@@ -5,14 +5,14 @@
  * strings directly. Every function tolerates records stored before routing
  * existed by leaving their display to the caller's undefined checks.
  */
-import type { Attempt, LoopReopen } from "../../shared/symphonies/models";
+import type { Attempt, LoopReopen } from "conductor/symphonies/models";
 import type {
   AttemptRouting,
   RoutingOverrideCategory,
   RoutingSelectedBy,
   RoutingWarning,
   RoutingWarningCode,
-} from "../../shared/symphonies/routing";
+} from "conductor/symphonies/routing";
 
 /** The worker fields a task definition, launch or reopen override carries. */
 export interface WorkerSpec {

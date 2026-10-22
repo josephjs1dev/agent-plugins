@@ -7,7 +7,7 @@ import type {
   TaskDiagnosis,
   TaskFinding,
   TaskReport,
-} from "../../shared/symphonies/models";
+} from "conductor/symphonies/models";
 import {
   launchWorker,
   overrideLine,

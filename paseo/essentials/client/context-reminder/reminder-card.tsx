@@ -12,12 +12,12 @@ import { useToast } from "@getpaseo/plugin/client/react-native";
 import {
   DEFAULT_SETTINGS,
   type ReminderNotice,
-} from "../../shared/context-reminder/contracts";
+} from "essentials/context-reminder/contracts";
 import {
   contextReminderSettings,
   snoozeReminder,
 } from "../../shared/context-reminder/rpc";
-import { formatGauge } from "../../shared/context-reminder/gauge";
+import { formatGauge } from "essentials/context-reminder/gauge";
 import { PixelSprite } from "./pixel-sprite";
 import { useReading } from "./readings";
 

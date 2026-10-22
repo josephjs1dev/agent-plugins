@@ -1,8 +1,8 @@
 import type { PluginTheme } from "@getpaseo/plugin";
 import { Text, View } from "react-native";
 
-import type { Usage } from "../shared/usage";
-import { formatResetTime, remainingPercent } from "../shared/usage-display";
+import type { Usage } from "essentials/usage";
+import { formatResetTime, remainingPercent } from "essentials/usage-display";
 
 interface QuotaWindowProps {
   quota: Usage["windows"][number];

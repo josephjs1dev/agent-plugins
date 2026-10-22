@@ -7,7 +7,7 @@ import type {
   SyncPreviewEntry,
   SyncProfilesResult,
 } from "../../shared/symphonies/profiles-rpc";
-import type { ConductorProfile } from "../../shared/symphonies/profiles";
+import type { ConductorProfile } from "conductor/symphonies/profiles";
 import { Button } from "../ui/controls";
 import { HarnessMark } from "../ui/harness-mark";
 import { StatusNotice } from "./profiles-controls";

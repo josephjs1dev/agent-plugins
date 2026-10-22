@@ -4,7 +4,7 @@ import {
   checkCliUpdatesDefinition,
   readMaintenanceDefinition,
   refreshCliModelsDefinition,
-} from "./cli-maintenance";
+} from "essentials/cli-maintenance";
 
 export const readMaintenance = defineRpc(readMaintenanceDefinition);
 export const checkCliUpdates = defineRpc(checkCliUpdatesDefinition);

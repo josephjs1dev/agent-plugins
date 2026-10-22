@@ -4,7 +4,7 @@ import type {
   ProviderMode,
   ProviderModel,
 } from "../../../shared/symphonies/profiles-rpc";
-import { isKnownElevatedMode } from "../../core/symphonies/workers";
+import { isKnownElevatedMode } from "conductor/symphonies/workers";
 import type { PaseoApi } from "./types";
 
 /**

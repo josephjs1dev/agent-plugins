@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Text, View } from "react-native";
 import { Icon } from "@getpaseo/plugin/client/react-native";
-import { taskState } from "../../shared/symphonies/task-state";
+import { taskState } from "conductor/symphonies/task-state";
 import type { PluginTheme } from "@getpaseo/plugin";
 import {
   latestAttempt,
@@ -10,13 +10,13 @@ import {
   type GrantedWrite,
   type StoredSymphony,
   type TaskDefinition,
-} from "../../shared/symphonies/models";
-import { attemptLoop } from "../../shared/symphonies/score";
-import { taskMetrics } from "../../shared/symphonies/metrics";
+} from "conductor/symphonies/models";
+import { attemptLoop } from "conductor/symphonies/score";
+import { taskMetrics } from "conductor/symphonies/metrics";
 import type {
   AttemptRouting,
   RoutingWarning,
-} from "../../shared/symphonies/routing";
+} from "conductor/symphonies/routing";
 import {
   launchWorker,
   overrideLine,
@@ -34,7 +34,7 @@ import { RoleChip } from "../ui/role-chip";
 import { cardSurface } from "../ui/card";
 import { statusColor, taskStatusPresentation } from "../ui/status";
 import { identityLabel, taskIdentity } from "./worker-identity";
-import type { ConductorProfile } from "../../shared/symphonies/profiles";
+import type { ConductorProfile } from "conductor/symphonies/profiles";
 import type { ProviderCatalog } from "../../shared/symphonies/profiles-rpc";
 import {
   FindingsPanel,

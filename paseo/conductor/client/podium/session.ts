@@ -2,8 +2,8 @@ import type {
   Decision,
   AgentItem,
   AnswerResult,
-} from "../../shared/agents/models";
-import type { Filter } from "../../shared/agents/attention";
+} from "conductor/agents/models";
+import type { Filter } from "conductor/agents/attention";
 import type { SymphonySelection } from "../symphonies/selection";
 
 export interface ViewState {

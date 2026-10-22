@@ -1,9 +1,9 @@
 import { useState, useSyncExternalStore } from "react";
 import { Text, View } from "react-native";
 import type { PluginTheme } from "@getpaseo/plugin";
-import type { AgentItem, AgentsSnapshot } from "../../shared/agents/models";
-import type { StoredSymphony } from "../../shared/symphonies/models";
-import { visibleItems } from "../../shared/agents/attention";
+import type { AgentItem, AgentsSnapshot } from "conductor/agents/models";
+import type { StoredSymphony } from "conductor/symphonies/models";
+import { visibleItems } from "conductor/agents/attention";
 import { PodiumSession } from "./session";
 import { Label, Notice } from "../ui/controls";
 import { PodiumToolbar } from "./toolbar";

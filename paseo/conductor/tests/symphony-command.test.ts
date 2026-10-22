@@ -6,16 +6,19 @@ import { request } from "node:http";
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { z } from "zod";
-import { commandServer } from "../server/core/commands/server";
-import { symphonyExecution } from "../server/core/symphonies/execution";
+import { commandServer } from "conductor/commands/server";
+import { symphonyExecution } from "conductor/symphonies/execution";
+import { contentHash, fileSymphonyStore } from "conductor/symphonies/store";
+import { SymphonyError } from "conductor/symphonies/errors";
 import {
-  contentHash,
-  fileSymphonyStore,
-} from "../server/core/symphonies/store";
-import { SymphonyError } from "../shared/symphonies/errors";
-import { placement, planContext } from "./symphony-fixtures";
+  placement,
+  planContext,
+} from "../../../packages/conductor/tests/symphony-fixtures";
 import { testDirectory } from "./paseo-fixtures";
-import { boundMcpClient, mcpClient } from "./mcp-client";
+import {
+  boundMcpClient,
+  mcpClient,
+} from "../../../packages/conductor/tests/mcp-client";
 
 const responseSchema = z.object({
   symphony: z.object({ id: z.string(), status: z.string() }),

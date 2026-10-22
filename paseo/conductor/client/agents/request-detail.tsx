@@ -6,14 +6,14 @@ import type {
   ArchiveResult,
   Decision,
   AgentItem,
-} from "../../shared/agents/models";
-import { questionAnswers } from "../../shared/agents/questions";
+} from "conductor/agents/models";
+import { questionAnswers } from "conductor/agents/questions";
 import type { ProviderCatalog } from "../../shared/symphonies/profiles-rpc";
 import {
   ageLabel,
   isSnoozed,
   needsAttention,
-} from "../../shared/agents/attention";
+} from "conductor/agents/attention";
 import { ArchiveAction } from "./archive-action";
 import { Button, Label, Notice, rowStyle } from "../ui/controls";
 import { HarnessMark } from "../ui/harness-mark";

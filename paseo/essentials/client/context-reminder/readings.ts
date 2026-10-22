@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 import type { PluginClientContext } from "@getpaseo/plugin/client";
-import type { ReminderNotice } from "../../shared/context-reminder/contracts";
+import type { ReminderNotice } from "essentials/context-reminder/contracts";
 
 type AgentUpdate = Parameters<
   Parameters<PluginClientContext["paseo"]["agents"]["subscribe"]>[0]

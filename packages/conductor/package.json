@@ -1,0 +1,29 @@
+{
+  "name": "conductor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Host-neutral Conductor core. Each host adapter depends on it.",
+  "exports": {
+    "./*": "./*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "tsx --test tests/*.test.ts",
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm test"
+  },
+  "dependencies": {
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.15",
+    "eslint": "9.39.1",
+    "prettier": "3.6.2",
+    "tsx": "4.21.0",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.48.1"
+  }
+}

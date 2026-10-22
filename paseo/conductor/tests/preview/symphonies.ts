@@ -8,11 +8,11 @@ import {
   type StoredSymphony,
   type SymphonyContext,
   type TaskFinding,
-} from "../../shared/symphonies/models";
+} from "conductor/symphonies/models";
 import type {
   ConductorProfile,
   ProfilesState,
-} from "../../shared/symphonies/profiles";
+} from "conductor/symphonies/profiles";
 import { providerCatalogSchema } from "../../shared/symphonies/profiles-rpc";
 import {
   fixtureAttempt,
@@ -22,7 +22,7 @@ import {
   recoverySymphony,
   storedSymphony,
   task,
-} from "../symphony-fixtures";
+} from "../../../../packages/conductor/tests/symphony-fixtures";
 
 /**
  * Preview-only fixture extensions kept out of the shared fixture record:

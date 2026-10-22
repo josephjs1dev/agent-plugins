@@ -1,12 +1,12 @@
 import type { PluginServerContext } from "@getpaseo/plugin/server";
 import type { PaseoApi } from "../engine/paseo/types";
-import type { SymphonyCommandAccess } from "../../shared/symphonies/command-access";
+import type { SymphonyCommandAccess } from "conductor/symphonies/command-access";
 import {
   bindAgent,
   mcpArgs,
   newAgentBinding,
   unbindAgent,
-} from "../core/commands/launcher";
+} from "conductor/commands/launcher";
 
 function availableMcpName(servers: Record<string, unknown> = {}): string {
   let name = "conductor";

@@ -2,8 +2,8 @@ import type {
   AgentPermissionRequest,
   AgentProfile,
   AgentSnapshot,
-} from "../../../shared/agents/agent";
-import type { ConcertEntry } from "../../../shared/concert";
+} from "conductor/agents/agent";
+import type { ConcertEntry } from "conductor/concert";
 import type { PaseoAgent, PaseoProfile, PaseoWorkspace } from "./types";
 
 /** Paseo stores the parent relationship as a label on the agent record. */

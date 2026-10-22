@@ -1,5 +1,5 @@
 import { defineRpc } from "@getpaseo/plugin";
-import { identifier } from "../schema";
+import { identifier } from "conductor/schema";
 import { z } from "zod";
 import {
   answerInputSchema,
@@ -7,7 +7,7 @@ import {
   keySchema,
   snapshotSchema,
   archiveResultSchema,
-} from "./models";
+} from "conductor/agents/models";
 
 export const getAgents = defineRpc({
   name: "agents.get",

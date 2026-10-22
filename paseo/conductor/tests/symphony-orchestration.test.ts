@@ -5,49 +5,49 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import test from "node:test";
-import { symphonyExecution } from "../server/core/symphonies/execution";
-import { launchChoice } from "../server/core/symphonies/orchestration";
-import { fileSymphonyStore } from "../server/core/symphonies/store";
+import { symphonyExecution } from "conductor/symphonies/execution";
+import { launchChoice } from "conductor/symphonies/orchestration";
+import { fileSymphonyStore } from "conductor/symphonies/store";
 import {
   noSymphonyMetrics,
   symphonyMetrics,
   type SymphonyMetrics,
-} from "../server/core/symphonies/metrics-recorder";
+} from "conductor/symphonies/metrics-recorder";
 import {
   canonicalJson,
   type ProfilesCatalog,
   type ProfilesSource,
-} from "../server/core/symphonies/profile-catalog";
-import type { ConductorProfile } from "../shared/symphonies/profiles";
+} from "conductor/symphonies/profile-catalog";
+import type { ConductorProfile } from "conductor/symphonies/profiles";
 import {
   isClassifiedRouting,
   type RoutingProfile,
-} from "../shared/symphonies/routing";
-import { executionStatus } from "../server/core/symphonies/results";
+} from "conductor/symphonies/routing";
+import { executionStatus } from "conductor/symphonies/results";
 import {
   SymphonyError,
   LaunchRejectedError,
-} from "../shared/symphonies/errors";
+} from "conductor/symphonies/errors";
 import type {
   WorkerLaunch,
   WorkerProfile,
   WorkerRuntime,
-} from "../server/core/symphonies/workers";
-import type { ExecutionRuntime } from "../server/core/symphonies/identity";
+} from "conductor/symphonies/workers";
+import type { ExecutionRuntime } from "conductor/symphonies/identity";
 import {
   changesRuntime,
   type SymphonyChangesRuntime,
-} from "../server/core/symphonies/changes";
+} from "conductor/symphonies/changes";
 import {
   attemptSchema,
   latestAttempt,
   SYMPHONY_LIMITS,
   type Attempt,
   type StoredSymphony,
-} from "../shared/symphonies/models";
-import { currentLoop, effectiveTask } from "../shared/symphonies/score";
+} from "conductor/symphonies/models";
+import { currentLoop, effectiveTask } from "conductor/symphonies/score";
 import { historyLoops } from "../client/symphonies/history";
-import { placement } from "./symphony-fixtures";
+import { placement } from "../../../packages/conductor/tests/symphony-fixtures";
 import { testDirectory } from "./paseo-fixtures";
 
 interface FixtureRouting {

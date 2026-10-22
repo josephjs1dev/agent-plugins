@@ -7,10 +7,10 @@ import {
   providerDefinitions,
   providerIds,
   type Provider,
-} from "../shared/providers";
-import { type Usage } from "../shared/usage";
+} from "essentials/providers";
+import { type Usage } from "essentials/usage";
 import { readUsage } from "../shared/usage-rpc";
-import { creditBalanceLabel } from "../shared/usage-display";
+import { creditBalanceLabel } from "essentials/usage-display";
 import { CodexReset } from "./codex-reset";
 import { QuotaWindow } from "./quota-window";
 import { ProviderLogo } from "./provider-logo";

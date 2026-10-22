@@ -9,13 +9,13 @@ import {
   providerDefinitions,
   providerIds,
   type Provider,
-} from "../shared/providers";
+} from "essentials/providers";
 import {
   sessionKey,
   compactTokens,
   formatCostEstimate,
   totalTokens,
-} from "../shared/history-display";
+} from "essentials/history-display";
 import {
   HistoryAction,
   HistoryChoice,

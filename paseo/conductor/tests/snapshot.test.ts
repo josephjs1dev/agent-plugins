@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { fileStore } from "../server/core/agents/store";
-import { snapshot } from "../server/core/agents/snapshot";
-import { agentKey } from "../server/core/agents/identity";
-import { visibleItems, ageLabel } from "../shared/agents/attention";
-import { snapshotSchema, itemSchema } from "../shared/agents/models";
+import { fileStore } from "conductor/agents/store";
+import { snapshot } from "conductor/agents/snapshot";
+import { agentKey } from "conductor/agents/identity";
+import { visibleItems, ageLabel } from "conductor/agents/attention";
+import { snapshotSchema, itemSchema } from "conductor/agents/models";
 import {
   domainAgent,
   question,

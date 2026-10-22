@@ -1,10 +1,10 @@
 import { useRef, useState, type ElementRef } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import type { PluginTheme } from "@getpaseo/plugin";
-import type { AgentItem } from "../../shared/agents/models";
+import type { AgentItem } from "conductor/agents/models";
 import type { ProviderCatalog } from "../../shared/symphonies/profiles-rpc";
-import { ageLabel, isSnoozed } from "../../shared/agents/attention";
-import { queueGroups } from "../../shared/agents/hierarchy";
+import { ageLabel, isSnoozed } from "conductor/agents/attention";
+import { queueGroups } from "conductor/agents/hierarchy";
 import { agentStatusPresentation, StatusMarker } from "../ui/status";
 import { Button, Label } from "../ui/controls";
 import { HarnessMark } from "../ui/harness-mark";

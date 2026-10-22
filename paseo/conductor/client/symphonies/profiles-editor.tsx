@@ -11,8 +11,8 @@ import {
   STALE_SAVE_MESSAGE,
   type ConductorProfile,
   type ProfileDraft,
-} from "../../shared/symphonies/profiles";
-import type { RoutingMode, RoutingRole } from "../../shared/symphonies/routing";
+} from "conductor/symphonies/profiles";
+import type { RoutingMode, RoutingRole } from "conductor/symphonies/routing";
 import type { PodiumSession } from "../podium/session";
 import { Button } from "../ui/controls";
 import {

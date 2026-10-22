@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { PluginHostProps } from "@getpaseo/plugin/client";
 import { Icon } from "@getpaseo/plugin/client/react-native";
 import { Pressable, Text, View } from "react-native";
-import type { Totals } from "../shared/history";
+import type { Totals } from "essentials/history";
 import {
   compactTokens,
   estimatedCost,
@@ -11,7 +11,7 @@ import {
   formatCostEstimate,
   isPartialCost,
   totalTokens,
-} from "../shared/history-display";
+} from "essentials/history-display";
 import { HistoryValue } from "./history-controls";
 
 type Themed = Pick<PluginHostProps, "theme">;

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Text, View } from "react-native";
 import type { PluginTheme } from "@getpaseo/plugin";
-import type { StoredSymphony } from "../../shared/symphonies/models";
+import type { StoredSymphony } from "conductor/symphonies/models";
 import { Button, rowStyle } from "../ui/controls";
 
 interface Props {

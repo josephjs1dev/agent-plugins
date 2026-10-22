@@ -1,7 +1,10 @@
-import type { PaseoApi } from "@getpaseo/client";
-import { cliNames, type CliId } from "../../../shared/cli-maintenance";
-import { inspectInstallation } from "../../core/cli-installation";
-import { run } from "../../core/cli-process";
+import type { PluginHandlerContext } from "@getpaseo/plugin/server";
+import { cliNames, type CliId } from "essentials/cli-maintenance";
+import { inspectInstallation } from "essentials/cli-installation";
+import { run } from "essentials/cli-process";
+
+// The compiler provides @getpaseo/plugin, not @getpaseo/client.
+type PaseoApi = PluginHandlerContext["paseo"];
 
 type ModelHost = {
   workspaces: Pick<PaseoApi["workspaces"], "ref">;

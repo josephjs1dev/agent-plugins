@@ -3,5 +3,6 @@
   "description": "Coordinate agents and concerts, answer blockers, and follow work through to completion.",
   "requirements": {
     "paseo": ">=0.10.3"
-  }
+  },
+  "build": [["npm", "install", "--omit=dev", "--ignore-scripts"]]
 }

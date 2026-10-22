@@ -8,11 +8,11 @@ import {
   syncProfiles,
 } from "../../shared/symphonies/profiles-rpc";
 import { providerCatalog } from "../engine/paseo/provider-catalog";
-import { SymphonyError } from "../../shared/symphonies/errors";
+import { SymphonyError } from "conductor/symphonies/errors";
 import {
   profilesState,
   type ProfilesSource,
-} from "../core/symphonies/profile-catalog";
+} from "conductor/symphonies/profile-catalog";
 
 async function guarded<T>(action: () => Promise<T>): Promise<T> {
   try {

@@ -12,12 +12,12 @@ import {
   profileNameSchema,
   type ConductorProfile,
   type ProfileDraft,
-} from "../../shared/symphonies/profiles";
+} from "conductor/symphonies/profiles";
 import {
   routingSizeSchema,
   type RoutingRole,
   type RoutingSize,
-} from "../../shared/symphonies/routing";
+} from "conductor/symphonies/routing";
 
 /**
  * Whether the profile participates in automatic routing. Routing keeps only

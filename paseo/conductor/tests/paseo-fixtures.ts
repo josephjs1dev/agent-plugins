@@ -2,10 +2,13 @@ import type {
   AgentPermissionRequest,
   PaseoAgent,
 } from "../server/engine/paseo/types";
-import type { AgentSnapshot } from "../shared/agents/agent";
+import type { AgentSnapshot } from "conductor/agents/agent";
 import { toAgentSnapshot } from "../server/engine/paseo/mapping";
 
-export { runtime, testDirectory } from "./fixtures";
+export {
+  runtime,
+  testDirectory,
+} from "../../../packages/conductor/tests/fixtures";
 
 export function question(
   overrides: Partial<AgentPermissionRequest> = {},

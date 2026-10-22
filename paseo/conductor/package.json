@@ -51,5 +51,8 @@
     "shared",
     "paseo-plugin.json",
     "README.md"
-  ]
+  ],
+  "dependencies": {
+    "conductor": "file:../../packages/conductor"
+  }
 }

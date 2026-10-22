@@ -28,10 +28,10 @@ import {
   SNOOZE_MINUTE_OPTIONS,
   WARN_PERCENT_OPTIONS,
   type ContextReminderSettings,
-} from "../../shared/context-reminder/contracts";
+} from "essentials/context-reminder/contracts";
 import { contextReminderSettings } from "../../shared/context-reminder/rpc";
-import { formatTokens } from "../../shared/context-reminder/gauge";
-import type { Character } from "../../shared/context-reminder/sprite";
+import { formatTokens } from "essentials/context-reminder/gauge";
+import type { Character } from "essentials/context-reminder/sprite";
 import { MoodPreview } from "./mood-preview";
 import { PixelSprite } from "./pixel-sprite";
 import { refreshReminderPills } from "./pills";

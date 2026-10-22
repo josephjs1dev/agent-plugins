@@ -93,7 +93,7 @@ read on the daemon host and nothing is sent off the machine.
 | OpenCode    | `~/.local/share/opencode/opencode.db`               | `XDG_DATA_HOME`                                                                                             |
 
 Conductor reads only the given session's log; it does not scan unrelated
-session contents. Harness-specific reader code lives in `server/core/harnesses/`
+session contents. Harness-specific reader code lives in `packages/conductor/harnesses/`
 behind one harness-neutral interface.
 
 Up to four read-only task agents can run concurrently (three by default). Task agents share
@@ -655,8 +655,7 @@ For focused checks, use `npm run typecheck`, `npm test`, or `npm run test:ui`.
 | `server/entrypoints/`  | Server RPC registration, hooks, events, and the command server start.      |
 | `server/engine/paseo/` | Paseo SDK integration: the host-port implementations.                      |
 | `server/skills/`       | The bundled `conductor-orchestrate` skill and its installer.               |
-| `server/core/`         | Generated: core modules that use Node (stores, git, harness readers).      |
-| `shared/`              | Generated Node-free core modules, plus the `defineRpc` wrappers.           |
+| `shared/`              | The `defineRpc` wrappers around the core's RPC definitions.                |
 | `tests/`               | Unit tests, fixture preview, browser tests, and optional host smoke tests. |
 
 - Read the repository's [AGENTS.md](../../AGENTS.md),
@@ -674,24 +673,30 @@ For focused checks, use `npm run typecheck`, `npm test`, or `npm run test:ui`.
   and parent/child checks. Test observable behavior with synthetic fixtures.
 - Keep dependencies pinned and update this plugin's `package-lock.json` when
   changing them. Release subscriptions and other resources during cleanup.
-- Run `npm run check` in `paseo/conductor/` and `git diff --check` before submitting.
+- Run `npm run check` in `paseo/conductor/` and `packages/conductor/`, and
+  `git diff --check`, before submitting.
 
-### Core files
+### Core
 
-`.core-files` lists the host-neutral core: Node-free modules in `shared/`,
-Node modules in `server/core/`, and their tests. This adapter holds the
-source. Other host adapters commit a copy at the same paths, made by
-`node scripts/sync-core.mjs conductor <host>`.
+The host-neutral core is the `conductor` package in
+[`packages/conductor/`](../../packages/conductor/). This adapter depends on it
+with `file:../../packages/conductor`, so npm links it as a symlink and core
+edits are live. The manifest `build` step runs `npm install` on a Git install.
 
-- Do not import a host SDK in core files. Lint enforces this rule.
+- Do not import a host SDK in the core. Lint enforces this rule.
 - Reach the host through the `host.ts` ports.
 - Keep the RPC transport in the adapter. The core exports plain
   `<name>Definition` objects, and `shared/**/*rpc.ts` wraps them with
   `defineRpc`/`defineSettings`.
-- Add a new core file to `.core-files`.
+- Import core test fixtures by relative path
+  (`../../packages/conductor/tests/...`). Playwright cannot strip types under
+  `node_modules`.
+- The profile store and the core use Paseo's provider and mode IDs.
+  `conductor/agents/vocabulary` lets another host translate its own IDs at its
+  host port.
 
-`tests/bundle-boundaries.test.ts` checks Paseo's bundle rules: `shared/` imports only shared code, and
-neither bundle reaches the other runtime's modules.
+`tests/bundle-boundaries.test.ts` checks Paseo's bundle rules. `shared/` and the app bundle reach only
+Node-free core modules, and neither bundle reaches the other runtime's modules.
 
 Every host stores Conductor data in `$CONDUCTOR_HOME` (default `~/.conductor`).
 `adoptLegacyHome(target, legacy)` moves a host's earlier directory there once.

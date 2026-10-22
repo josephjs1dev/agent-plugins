@@ -2,7 +2,10 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { longSummary, longTaskTitle } from "../symphony-fixtures";
+import {
+  longSummary,
+  longTaskTitle,
+} from "../../../../packages/conductor/tests/symphony-fixtures";
 import { shortResultSummary } from "../preview/symphonies";
 
 /**
@@ -1600,8 +1603,10 @@ test("reviewed card surfaces across widths and appearances", async ({
 });
 
 test("fixture symphonies serialize under the production symphony schema", async () => {
-  const { symphonySchema } = await import("../../shared/symphonies/models");
-  const { fixtureSymphonies } = await import("../symphony-fixtures");
+  const { symphonySchema } = await import("conductor/symphonies/models");
+  const { fixtureSymphonies } = await import(
+    "../../../../packages/conductor/tests/symphony-fixtures"
+  );
   expect(longSummary.split("\n").length).toBeGreaterThan(3);
   expect(longTaskTitle.length).toBeLessThanOrEqual(160);
   for (const [name, build] of Object.entries(fixtureSymphonies)) {

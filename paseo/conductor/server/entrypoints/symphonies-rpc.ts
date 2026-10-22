@@ -5,13 +5,13 @@ import {
   listSymphonies,
   readSymphony,
 } from "../../shared/symphonies/rpc";
-import { SymphonyError } from "../../shared/symphonies/errors";
-import { listWithProjects } from "../../shared/symphonies/projects";
+import { SymphonyError } from "conductor/symphonies/errors";
+import { listWithProjects } from "conductor/symphonies/projects";
 import { symphonyService } from "./symphonies-service";
 import { paseoSymphonyHost } from "../engine/paseo/symphony-host";
 import { paseoAgentsHost } from "../engine/paseo/agents-host";
 import { paseoProfilesPort } from "../engine/paseo/profiles-port";
-import { pages } from "../../shared/agents/directory";
+import { pages } from "conductor/agents/directory";
 import { paseoConnection } from "../engine/paseo/connection";
 import { commandHooks } from "./symphonies-hooks";
 import { registerProfilesRpc } from "./profiles-rpc";

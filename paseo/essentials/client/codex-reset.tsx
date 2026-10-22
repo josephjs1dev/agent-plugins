@@ -3,12 +3,12 @@ import { useRpc, type PluginHostProps } from "@getpaseo/plugin/client";
 import { Icon, Modal } from "@getpaseo/plugin/client/react-native";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Pressable, Text, View } from "react-native";
-import { resetOutcomeMessages } from "../shared/codex-reset";
+import { resetOutcomeMessages } from "essentials/codex-reset";
 import {
   consumeCodexReset,
   prepareCodexReset,
 } from "../shared/codex-reset-rpc";
-import type { Usage } from "../shared/usage";
+import type { Usage } from "essentials/usage";
 
 type Props = Pick<PluginHostProps, "theme" | "host" | "layout"> & {
   usage: Usage;

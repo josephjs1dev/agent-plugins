@@ -2,7 +2,7 @@ import type { ComponentType } from "react";
 import { Icon } from "@getpaseo/plugin/client/react-native";
 import { Image, View } from "react-native";
 
-import { providerDefinitions, type Provider } from "../shared/providers";
+import { providerDefinitions, type Provider } from "essentials/providers";
 import { claudeLogoUri } from "./assets/claude-logo";
 import { codexLogoUri } from "./assets/codex-logo";
 

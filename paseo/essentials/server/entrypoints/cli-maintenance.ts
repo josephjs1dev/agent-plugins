@@ -6,9 +6,9 @@ import {
   refreshCliModels,
 } from "../../shared/cli-maintenance-rpc";
 import { readMaintenanceHost } from "../../shared/maintenance-host-rpc";
-import { createMaintenanceService } from "../core/maintenance-service";
+import { createMaintenanceService } from "essentials/maintenance-service";
 import { refreshModels } from "../engine/paseo/cli-models";
-import { readHostIdentity } from "../core/host-identity";
+import { readHostIdentity } from "essentials/host-identity";
 
 export default function contribute(server: PluginServerContext) {
   const service = createMaintenanceService();

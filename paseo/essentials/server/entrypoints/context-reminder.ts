@@ -9,20 +9,20 @@ import {
   toReminderConfig,
   type ContextReminderSettings,
   type ReminderNotice,
-} from "../../shared/context-reminder/contracts";
+} from "essentials/context-reminder/contracts";
 import {
   contextReminderSettings,
   demoReminder,
   readReminderConfig,
   snoozeReminder,
 } from "../../shared/context-reminder/rpc";
-import { DEFAULT_WINDOW_TOKENS } from "../../shared/context-reminder/gauge";
+import { DEFAULT_WINDOW_TOKENS } from "essentials/context-reminder/gauge";
 import {
   FRESH_STATE,
   nextReminder,
   reminderTier,
   type ReminderState,
-} from "../../shared/context-reminder/reminder-policy";
+} from "essentials/context-reminder/reminder-policy";
 
 type Paseo = PluginHandlerContext["paseo"];
 

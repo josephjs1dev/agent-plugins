@@ -1,20 +1,20 @@
-import type { SymphonyHost } from "../../shared/symphonies/host";
+import type { SymphonyHost } from "conductor/symphonies/host";
 import { join } from "node:path";
-import { SymphonyError } from "../../shared/symphonies/errors";
-import { fileSymphonyStore } from "../core/symphonies/store";
-import { executionRuntime } from "../core/symphonies/identity";
-import { changesRuntime } from "../core/symphonies/changes";
-import { workerRuntime } from "../core/symphonies/workers";
-import { symphonyExecution } from "../core/symphonies/execution";
-import { symphonyMetrics } from "../core/symphonies/metrics-recorder";
-import { readerFor } from "../core/harnesses/usage";
+import { SymphonyError } from "conductor/symphonies/errors";
+import { fileSymphonyStore } from "conductor/symphonies/store";
+import { executionRuntime } from "conductor/symphonies/identity";
+import { changesRuntime } from "conductor/symphonies/changes";
+import { workerRuntime } from "conductor/symphonies/workers";
+import { symphonyExecution } from "conductor/symphonies/execution";
+import { symphonyMetrics } from "conductor/symphonies/metrics-recorder";
+import { readerFor } from "conductor/harnesses/usage";
 import {
   PROFILES_FILE,
   profileStoreSource,
   type PaseoProfilesPort,
-} from "../core/symphonies/profile-catalog";
-import { commandServer } from "../core/commands/server";
-import { symphonyAck } from "../../shared/commands/ack";
+} from "conductor/symphonies/profile-catalog";
+import { commandServer } from "conductor/commands/server";
+import { symphonyAck } from "conductor/commands/ack";
 
 export interface SymphonyServiceOptions {
   directory: string;

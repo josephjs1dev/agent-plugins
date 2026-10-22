@@ -1,6 +1,6 @@
 import { Pressable, Text, TextInput, View } from "react-native";
 import type { PluginTheme } from "@getpaseo/plugin";
-import type { Decision, RequestForm } from "../../shared/agents/models";
+import type { Decision, RequestForm } from "conductor/agents/models";
 import { Button, Label, rowStyle } from "../ui/controls";
 
 interface Props {

@@ -4,13 +4,13 @@ import type {
   PluginButtonRegistration,
   PluginClientContext,
 } from "@getpaseo/plugin/client";
-import { type ReminderConfig } from "../../shared/context-reminder/contracts";
+import { type ReminderConfig } from "essentials/context-reminder/contracts";
 import { readReminderConfig } from "../../shared/context-reminder/rpc";
 import {
   DEFAULT_WINDOW_TOKENS,
   percentOfWindow,
-} from "../../shared/context-reminder/gauge";
-import { reminderTier } from "../../shared/context-reminder/reminder-policy";
+} from "essentials/context-reminder/gauge";
+import { reminderTier } from "essentials/context-reminder/reminder-policy";
 import { ReminderCard } from "./reminder-card";
 import {
   clearReading,

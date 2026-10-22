@@ -5,12 +5,12 @@ import {
   archiveAgent,
   getAgents,
 } from "../../shared/agents/rpc";
-import { answer } from "../core/agents/answer";
-import { archiveInactive } from "../core/agents/archive";
-import { agentKey } from "../core/agents/identity";
-import { snapshot } from "../core/agents/snapshot";
-import type { AgentsStore } from "../core/agents/store";
-import type { TurnJournal } from "../core/agents/turns";
+import { answer } from "conductor/agents/answer";
+import { archiveInactive } from "conductor/agents/archive";
+import { agentKey } from "conductor/agents/identity";
+import { snapshot } from "conductor/agents/snapshot";
+import type { AgentsStore } from "conductor/agents/store";
+import type { TurnJournal } from "conductor/agents/turns";
 import { paseoAgentsHost } from "../engine/paseo/agents-host";
 
 export function registerAgentsRpc(

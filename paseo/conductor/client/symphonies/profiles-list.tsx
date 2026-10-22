@@ -4,8 +4,8 @@ import type { PluginTheme } from "@getpaseo/plugin";
 import {
   isClassifiedRouting,
   type RoutingMode,
-} from "../../shared/symphonies/routing";
-import type { ConductorProfile } from "../../shared/symphonies/profiles";
+} from "conductor/symphonies/routing";
+import type { ConductorProfile } from "conductor/symphonies/profiles";
 import type { ProviderCatalog } from "../../shared/symphonies/profiles-rpc";
 import { Icon } from "@getpaseo/plugin/client/react-native";
 import { Button, rowStyle } from "../ui/controls";

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { PluginHostProps } from "@getpaseo/plugin/client";
-import type { History } from "../shared/history";
+import type { History } from "essentials/history";
 import {
   bucketLabel,
   compactTokens,
@@ -10,7 +10,7 @@ import {
   formatCostEstimate,
   historyBuckets,
   totalTokens,
-} from "../shared/history-display";
+} from "essentials/history-display";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
 const CHART_HEIGHT = 180;

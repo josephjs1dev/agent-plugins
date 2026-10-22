@@ -6,8 +6,8 @@ import {
   symphonySchema,
   symphonyListEntrySchema,
   SYMPHONY_LIMITS,
-} from "./models";
-import { identifier } from "../schema";
+} from "conductor/symphonies/models";
+import { identifier } from "conductor/schema";
 
 export const listSymphonies = defineRpc({
   name: "symphonies.list",

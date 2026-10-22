@@ -1,11 +1,8 @@
-import type {
-  PaseoAgentListOptions,
-  PaseoAgentListResult,
-} from "@getpaseo/client";
+import type { PluginHandlerContext } from "@getpaseo/plugin/server";
 import { z } from "zod";
-import { harnessSchema } from "../../../shared/harnesses";
-import { sessionKey } from "../../../shared/history-display";
-import { readStorageFile, writeStorageFile } from "../../core/history-files";
+import { harnessSchema } from "essentials/harnesses";
+import { sessionKey } from "essentials/history-display";
+import { readStorageFile, writeStorageFile } from "essentials/history-files";
 
 const FILE_NAME = "workspace-sessions.json";
 const MAX_FILE_BYTES = 8 * 1024 * 1024;
@@ -41,9 +38,12 @@ const agentEntrySchema = z.object({
   }),
 });
 
+// The compiler provides @getpaseo/plugin, not @getpaseo/client.
+type AgentList = PluginHandlerContext["paseo"]["agents"]["list"];
+
 export type ListAgents = (
-  options: PaseoAgentListOptions,
-) => Promise<PaseoAgentListResult>;
+  options: NonNullable<Parameters<AgentList>[0]>,
+) => ReturnType<AgentList>;
 
 function agentSession(entry: unknown, fallbackAt: string) {
   const parsed = agentEntrySchema.safeParse(entry);

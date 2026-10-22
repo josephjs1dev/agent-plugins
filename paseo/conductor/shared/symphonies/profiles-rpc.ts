@@ -6,15 +6,15 @@ import {
   profilesStateSchema,
   revisionSchema,
   saveProfilesResultSchema,
-} from "./profiles";
+} from "conductor/symphonies/profiles";
 import {
   importProfilesResultSchema,
   providerCatalogSchema,
   syncPreviewSchema,
   syncProfilesResultSchema,
-} from "./profiles-contracts";
+} from "conductor/symphonies/profiles-contracts";
 
-export * from "./profiles-contracts";
+export * from "conductor/symphonies/profiles-contracts";
 
 /** The Conductor worker profiles, their mode, revisions and diagnostics. */
 export const listProfiles = defineRpc({

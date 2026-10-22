@@ -1,5 +1,5 @@
 import type { PluginServerContext } from "@getpaseo/plugin/server";
-import type { TurnJournal } from "../core/agents/turns";
+import type { TurnJournal } from "conductor/agents/turns";
 import { paseoAgentsHost } from "../engine/paseo/agents-host";
 
 export function observeTurns(

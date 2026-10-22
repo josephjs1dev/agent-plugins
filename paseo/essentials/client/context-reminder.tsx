@@ -9,7 +9,7 @@ import {
   parseDemoArgs,
   reminderNoticeSchema,
   type ReminderNotice,
-} from "../shared/context-reminder/contracts";
+} from "essentials/context-reminder/contracts";
 import { demoReminder } from "../shared/context-reminder/rpc";
 import {
   CONFIG_SCREEN_ID,

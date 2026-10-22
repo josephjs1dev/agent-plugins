@@ -4,9 +4,9 @@ import {
   moodFor,
   toPixelRuns,
   type Character,
-} from "../../shared/context-reminder/sprite";
-import { FRAMES } from "../../shared/context-reminder/sprite-frames";
-import type { ReminderTier } from "../../shared/context-reminder/reminder-policy";
+} from "essentials/context-reminder/sprite";
+import { FRAMES } from "essentials/context-reminder/sprite-frames";
+import type { ReminderTier } from "essentials/context-reminder/reminder-policy";
 
 interface PixelSpriteProps {
   character: Character;

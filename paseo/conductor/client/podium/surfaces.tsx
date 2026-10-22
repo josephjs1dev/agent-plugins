@@ -11,8 +11,8 @@ import {
 import * as PluginUi from "@getpaseo/plugin/client/ui";
 import { useQueryClient } from "@tanstack/react-query";
 import { annotate, answerRequest, archiveAgent } from "../../shared/agents/rpc";
-import { isSnoozed, needsAttention } from "../../shared/agents/attention";
-import type { StoredSymphony } from "../../shared/symphonies/models";
+import { isSnoozed, needsAttention } from "conductor/agents/attention";
+import type { StoredSymphony } from "conductor/symphonies/models";
 import { PodiumView } from "./view";
 import { PodiumSession } from "./session";
 import { agentsQueryKey, useAgents } from "../agents/query";

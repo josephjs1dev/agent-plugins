@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Text, View } from "react-native";
 import type { PluginTheme } from "@getpaseo/plugin";
-import type { ArchiveResult, AgentItem } from "../../shared/agents/models";
-import { category } from "../../shared/agents/attention";
+import type { ArchiveResult, AgentItem } from "conductor/agents/models";
+import { category } from "conductor/agents/attention";
 import { Button, rowStyle } from "../ui/controls";
 
 interface Props {

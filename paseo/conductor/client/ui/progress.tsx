@@ -1,7 +1,7 @@
 import { Text, View } from "react-native";
 import type { ReactNode } from "react";
 import type { PluginTheme } from "@getpaseo/plugin";
-import type { TaskStateKey } from "../../shared/symphonies/task-state";
+import type { TaskStateKey } from "conductor/symphonies/task-state";
 
 /**
  * One slice of a detailed progress track, in score order. `reportedComplete`

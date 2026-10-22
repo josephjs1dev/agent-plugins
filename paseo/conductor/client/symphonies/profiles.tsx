@@ -11,8 +11,8 @@ import type {
   ProfilesState,
   ProfileDraft,
   SaveProfilesResult,
-} from "../../shared/symphonies/profiles";
-import type { RoutingMode } from "../../shared/symphonies/routing";
+} from "conductor/symphonies/profiles";
+import type { RoutingMode } from "conductor/symphonies/routing";
 import type { PodiumSession, ViewState } from "../podium/session";
 import { StatusNotice } from "./profiles-controls";
 import { ProfileEditor } from "./profiles-editor";

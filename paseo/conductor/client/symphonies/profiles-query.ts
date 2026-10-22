@@ -11,7 +11,7 @@ import {
 import type {
   ProfileOperation,
   SaveProfilesResult,
-} from "../../shared/symphonies/profiles";
+} from "conductor/symphonies/profiles";
 import type { ProfilesData } from "./profiles";
 
 /** The React Query key holding the whole profiles list + mode + revision. */

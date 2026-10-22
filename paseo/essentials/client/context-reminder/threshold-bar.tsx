@@ -3,7 +3,7 @@ import type { PluginTheme } from "@getpaseo/plugin";
 import type {
   ReminderThresholds,
   ReminderTier,
-} from "../../shared/context-reminder/reminder-policy";
+} from "essentials/context-reminder/reminder-policy";
 
 export interface Zone {
   label: string;

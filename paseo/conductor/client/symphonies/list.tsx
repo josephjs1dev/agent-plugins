@@ -8,7 +8,7 @@ import {
   type SymphonyContext,
   type SymphonyListEntry,
   type StoredSymphony,
-} from "../../shared/symphonies/models";
+} from "conductor/symphonies/models";
 import type { PodiumSession, ViewState } from "../podium/session";
 import { Label, Notice } from "../ui/controls";
 import { SymphonyRow } from "./row";

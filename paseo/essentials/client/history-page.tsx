@@ -5,7 +5,7 @@ import {
   type PluginWorkspacePanelProps,
 } from "@getpaseo/plugin/client";
 import { ScrollView, Text, View } from "react-native";
-import { providerDefinitions, providerIds } from "../shared/providers";
+import { providerDefinitions, providerIds } from "essentials/providers";
 import type { HistoryNavigation, HistorySelection } from "./history-navigation";
 import {
   HistoryAction,
@@ -17,8 +17,8 @@ import { ModelUsage, HistorySessions } from "./history";
 import { UsageSummary } from "./history-totals";
 import { HistoryChart } from "./history-chart";
 import { useHistoryQuery } from "./history-query";
-import { CODEX_RATE_DATE } from "../shared/codex-cost-estimate";
-import { estimatedCost } from "../shared/history-display";
+import { CODEX_RATE_DATE } from "essentials/codex-cost-estimate";
+import { estimatedCost } from "essentials/history-display";
 import {
   historyQueryOptions,
   validSessionOffset,

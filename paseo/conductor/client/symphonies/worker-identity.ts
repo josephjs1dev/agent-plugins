@@ -9,10 +9,10 @@ import type {
   Attempt,
   StoredSymphony,
   TaskDefinition,
-} from "../../shared/symphonies/models";
-import { latestAttempt } from "../../shared/symphonies/models";
-import type { ConductorProfile } from "../../shared/symphonies/profiles";
-import { resolveProfileRef } from "../../shared/symphonies/profiles";
+} from "conductor/symphonies/models";
+import { latestAttempt } from "conductor/symphonies/models";
+import type { ConductorProfile } from "conductor/symphonies/profiles";
+import { resolveProfileRef } from "conductor/symphonies/profiles";
 import type { ProviderCatalog } from "../../shared/symphonies/profiles-rpc";
 
 /** The worker identity a graph node or profile card renders. */

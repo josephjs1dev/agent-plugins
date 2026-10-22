@@ -1,13 +1,13 @@
 import type { PluginServerContext } from "@getpaseo/plugin/server";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { fileStore } from "./server/core/agents/store";
-import { turnJournal } from "./server/core/agents/turns";
+import { fileStore } from "conductor/agents/store";
+import { turnJournal } from "conductor/agents/turns";
 import { registerAgentsRpc } from "./server/entrypoints/agents-rpc";
 import { observeTurns } from "./server/entrypoints/agents-events";
 import { registerSymphonies } from "./server/entrypoints/symphonies-rpc";
 import { registerSkillsRpc } from "./server/entrypoints/skills-rpc";
-import { adoptLegacyHome, conductorHome } from "./server/core/home";
+import { adoptLegacyHome, conductorHome } from "conductor/home";
 
 export default function contribute(
   server: PluginServerContext,
