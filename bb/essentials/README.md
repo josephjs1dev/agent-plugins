@@ -26,6 +26,9 @@ provider logins, and the data sources in detail.
   thread has a reading and opens the same card in a popover. Choose
   **Preview Context Reminder** in the composer's `+` menu to preview a card.
   The **Context Reminder** page in the navigation rail holds its settings.
+- **Child-thread cleanup.** A thread that has child threads gets **Clean up
+  child threads** in its thread menu. **Archive idle child threads** and
+  **Delete idle child threads** list the targets and ask for confirmation.
 
 ## How it maps to bb
 
@@ -41,6 +44,7 @@ provider logins, and the data sources in detail.
 | Context Reminder screen      | The Context Reminder page and bb's settings form      |
 | `/context-reminder demo`     | **Preview Context Reminder** in the composer `+` menu |
 | Provider `claude`            | Provider `claude-code`                                |
+| Archive or delete subagents  | Thread menu: **Clean up child threads**               |
 
 - **No workspace scope.** bb has threads, not workspaces, so this adapter
   leaves out Paseo's workspace usage and always reads host-wide history. The
@@ -49,6 +53,16 @@ provider logins, and the data sources in detail.
   reminder. Turn counts, snoozes, and pending reminders live in server
   memory, so a bb restart clears them. A missing window size assumes a
   1M-token window. The reminder appears only in the thread composer.
+- **Child-thread cleanup.** Essentials reads every thread below the selected
+  thread, archived and hidden ones included. A thread is idle when its status
+  is `idle` and it has no background work, queued message, or open question.
+  An error status counts as busy. Only visible idle threads with no busy
+  thread below them are targets. Archive skips archived threads. Delete
+  includes them. bb archives and deletes a thread together with the threads
+  whose lifecycle it owns, so Essentials acts deepest first, one thread at a
+  time. When you confirm, Essentials checks the tree again. A thread that
+  started work since the check stays. When a thread fails, every thread above
+  it stays. One cleanup reads at most 500 threads.
 - **CLI maintenance.** bb updates its harnesses and lists their models
   itself, so this adapter leaves out Paseo's Harnesses screen.
 

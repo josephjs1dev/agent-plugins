@@ -9,6 +9,8 @@ import { ContextReminderPage } from "./client/context-reminder/settings-page";
 import { ReminderHeaderButton } from "./client/context-reminder/header-button";
 import { ProviderUsageButton } from "./client/usage/provider-button";
 import { HistoryPage, HistoryPanel } from "./client/history/panel";
+import { cleanupAction } from "./client/child-threads/action";
+import { CleanupDialog } from "./client/child-threads/dialog";
 import {
   PREVIEW_POPUP,
   ReminderBanner,
@@ -45,6 +47,11 @@ export default definePluginApp((app) => {
     title: "Usage history",
     icon: ICONS.chart,
     component: HistoryPanel,
+  });
+  app.slots.experimental_threadAction(cleanupAction);
+  app.slots.experimental_appOverlay({
+    id: "child-threads",
+    component: CleanupDialog,
   });
   app.composer.customize({
     id: "context-reminder",

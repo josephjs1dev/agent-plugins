@@ -1,5 +1,6 @@
 import type { BbPluginApi } from "@get-bb/plugin-sdk";
 import { historyDirectory } from "essentials/history-store";
+import { childThreadHandlers } from "./server/entrypoints/child-threads";
 import { essentialsContract } from "./server/entrypoints/contract";
 import {
   contextReminder,
@@ -23,6 +24,7 @@ export default function plugin(bb: BbPluginApi): void {
   bb.rpc.register(essentialsContract, {
     ...usage.handlers,
     ...reminder.handlers,
+    ...childThreadHandlers(sdk),
   });
   observeThreads(bb, { reminder });
   bb.onDispose(async () => {

@@ -15,6 +15,12 @@ import {
   reminderConfigSchema,
   reminderNoticeSchema,
 } from "essentials/context-reminder/contracts";
+import {
+  cleanupPlanSchema,
+  cleanupResultSchema,
+  planInputSchema,
+  runInputSchema,
+} from "../../shared/child-threads";
 
 interface Typed {
   "~standard": { types?: { input: unknown; output: unknown } | undefined };
@@ -111,6 +117,15 @@ export const essentialsContract = defineRpcContract({
   "context_reminder.demo": method({
     input: thread.extend({ percent: z.int().min(0).max(100) }),
     output: reminderStateSchema,
+  }),
+  // bb-only: Paseo archives and deletes child agents natively.
+  "child_threads.plan": method({
+    input: planInputSchema,
+    output: cleanupPlanSchema,
+  }),
+  "child_threads.run": method({
+    input: runInputSchema,
+    output: cleanupResultSchema,
   }),
 });
 export type EssentialsContract = typeof essentialsContract;

@@ -5,4 +5,6 @@ export const ICONS = {
   refresh: "essentials/refresh",
   alarm: "essentials/alarm",
   reset: "essentials/reset",
+  archive: "essentials/archive",
+  trash: "essentials/trash",
 } as const;
