@@ -300,7 +300,10 @@ remain authoritative subject to availability and the existing permission
 ceiling. The permission mode is never selected inline: an explicit profile
 `modeId` overrides the inherited Conductor mode; otherwise a task agent on the
 same provider copies the Conductor's mode, and another provider starts in its
-default mode. Attempts retain the effective launch choice, catalog revision, routing
+default mode. The Conductor's mode is also a floor: a narrower or unranked
+mode becomes the Conductor's mode on the same provider, or the narrowest mode
+at least as broad that the other provider reports. A provider that reports no
+such mode keeps its mode. Attempts retain the effective launch choice, catalog revision, routing
 reason, override and warnings. Podium task cards and reports show the worker
 profile/model, selection reason and any override or warning.
 

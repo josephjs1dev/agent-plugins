@@ -68,6 +68,8 @@ function fakePaseo(
     }>;
     createError?: Error;
     refreshErrors?: Map<string, Error>;
+    /** Mode IDs per provider; Pi reports none unless a test sets them. */
+    modes?: Record<string, string[]>;
   } = {},
 ) {
   const agents = new Map((options.agents ?? []).map((item) => [item.id, item]));
@@ -171,6 +173,15 @@ function fakePaseo(
             { provider, id: "gpt-test" },
             { provider, id: "pi-test" },
           ],
+        };
+      },
+      async listModes(provider: string) {
+        const modes = options.modes ?? {
+          codex: ["default", "auto-review", "full-access"],
+        };
+        return {
+          provider,
+          modes: (modes[provider] ?? []).map((id) => ({ id })),
         };
       },
     },
@@ -452,7 +463,7 @@ void test("named profile settings apply without carrying a provider-specific mod
   ]);
 });
 
-void test("a configured auto-review downgrade is allowed from full access", async () => {
+void test("a narrower profile mode rises to the Conductor's mode on its provider", async () => {
   const fake = fakePaseo({
     agents: [parent({ currentModeId: "full-access" })],
     profiles: [
@@ -477,7 +488,66 @@ void test("a configured auto-review downgrade is allowed from full access", asyn
     parent: launchInput.parentAgentId,
     title: launchInput.title,
     prompt: launchInput.prompt,
-    config: { provider: "codex/gpt-test", modeId: "auto-review" },
+    config: { provider: "codex/gpt-test", modeId: "full-access" },
+  });
+});
+
+void test("another provider gets its narrowest mode at least as broad as the Conductor's", async () => {
+  const modes = { pi: ["default", "auto", "bypassPermissions"] };
+  const elevated = fakePaseo({
+    agents: [parent({ currentModeId: "full-access" })],
+    modes,
+    profiles: [
+      {
+        id: "pi-reviewer",
+        name: "Pi reviewer",
+        provider: "pi",
+        model: "pi-test",
+        modeId: "default",
+      },
+    ],
+  });
+  await paseoWorkers(elevated.paseo, () => elevated.profileStore).launch({
+    ...launchInput,
+    profile: "pi-reviewer",
+  });
+  assert.deepEqual(elevated.created[0]?.config, {
+    provider: "pi/pi-test",
+    modeId: "bypassPermissions",
+  });
+
+  const reviewed = fakePaseo({ agents: [parent()], modes });
+  await paseoWorkers(reviewed.paseo, () => reviewed.profileStore).launch({
+    ...launchInput,
+    provider: "pi",
+    model: "pi-test",
+  });
+  assert.deepEqual(reviewed.created[0]?.config, {
+    provider: "pi/pi-test",
+    modeId: "auto",
+  });
+});
+
+void test("a broader profile mode than an approval-prompting Conductor is kept", async () => {
+  const fake = fakePaseo({
+    agents: [parent({ currentModeId: "default" })],
+    profiles: [
+      {
+        id: "safe-review",
+        name: "Safe review",
+        provider: "codex",
+        model: "gpt-test",
+        modeId: "auto-review",
+      },
+    ],
+  });
+  await paseoWorkers(fake.paseo, () => fake.profileStore).launch({
+    ...launchInput,
+    profile: "safe-review",
+  });
+  assert.deepEqual(fake.created[0]?.config, {
+    provider: "codex/gpt-test",
+    modeId: "auto-review",
   });
 });
 

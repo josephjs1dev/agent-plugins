@@ -45,6 +45,10 @@ export function paseoSymphonyHost(paseo: PaseoApi): SymphonyHost {
       const { models } = await paseo.providers.listModels(provider, { cwd });
       return (models ?? []).map((entry) => entry.id);
     },
+    async modes(provider, cwd) {
+      const { modes } = await paseo.providers.listModes(provider, { cwd });
+      return (modes ?? []).map((entry) => entry.id);
+    },
     async createAgent(input) {
       await paseo.workspaces.ref(input.concertId).agents.create({
         agentId: input.agentId,

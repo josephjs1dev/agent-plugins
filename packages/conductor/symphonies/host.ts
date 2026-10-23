@@ -24,6 +24,8 @@ export interface SymphonyHost {
   profiles(): Promise<AgentProfile[]>;
   providers(): Promise<Array<{ provider: string; available: boolean }>>;
   models(provider: string, cwd: string): Promise<string[]>;
+  /** The provider's permission mode IDs; empty when the host reports none. */
+  modes(provider: string, cwd: string): Promise<string[]>;
   /** Keyed by agentId; Paseo deduplicates a replayed create. */
   createAgent(input: CreateAgentInput): Promise<void>;
   /** Steers without interrupting a turn that starts after the caller's busy check. */

@@ -9,6 +9,8 @@ import { bbSymphonyHost } from "../server/engine/bb/symphony-host";
 import { bbVocabulary } from "../shared/vocabulary";
 import { translatedHost } from "conductor/agents/vocabulary";
 import { LaunchRejectedError } from "conductor/symphonies/errors";
+import type { ConductorProfile } from "conductor/symphonies/profiles";
+import { workerRuntime } from "conductor/symphonies/workers";
 
 const parent = makeThreadResponse({
   id: "thr_parent",
@@ -266,6 +268,42 @@ void test("a provider gets its next broader mode within the ceiling", async () =
   await host.createAgent({
     ...launch,
     config: { provider: "acp-opencode/model", modeId: "auto" },
+  });
+
+  assert.equal(spawnedMode(harness), "full");
+});
+
+void test("modes reports a provider's bb permission modes", async () => {
+  const { harness, host } = fixture();
+  withModes(harness, "auto", [{ id: "pi", permissionModes: ["full"] }]);
+
+  assert.deepEqual(await host.modes("pi", "/work/repo"), ["full"]);
+});
+
+void test("a task under a full Conductor thread runs full despite a narrower profile", async () => {
+  const { harness, host } = fixture();
+  withModes(harness, "full", [
+    { id: "codex", permissionModes: ["accept-edits", "auto", "full"] },
+  ]);
+  const profile: ConductorProfile = {
+    id: "11111111-1111-4111-8111-111111111111",
+    name: "Reviewer",
+    notes: "",
+    provider: "codex",
+    model: "gpt",
+    modeId: "auto-review",
+    routing: null,
+    instructions: "",
+  };
+  await workerRuntime(translatedHost(host, bbVocabulary), () => [
+    profile,
+  ]).launch({
+    agentId: launch.agentId,
+    concertId: launch.concertId,
+    parentAgentId: launch.parentAgentId,
+    title: launch.title,
+    prompt: launch.prompt,
+    profile: "Reviewer",
   });
 
   assert.equal(spawnedMode(harness), "full");

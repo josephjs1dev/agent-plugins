@@ -190,6 +190,11 @@ export function bbSymphonyHost({
       const { models } = await sdk().providers.models({ providerId: provider });
       return models.map((entry) => entry.model);
     },
+    async modes(provider) {
+      return providerModes(
+        (await sdk().providers.list()).find((entry) => entry.id === provider),
+      );
+    },
     async createAgent(input) {
       if (await ids.bound(input.agentId)) {
         // bb has no keyed creation; the bound thread already has its prompt.

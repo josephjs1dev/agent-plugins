@@ -35,6 +35,7 @@ function fakeHost() {
       modelCalls.push(provider);
       return ["claude-opus-5-5"];
     },
+    modes: async () => ["accept-edits", "full"],
     createAgent: async (input) => {
       created.push(input);
     },

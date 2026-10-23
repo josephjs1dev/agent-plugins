@@ -82,6 +82,11 @@ export function translatedHost(
     },
     models: (provider, cwd) =>
       host.models(vocabulary.providerToHost(provider), cwd),
+    async modes(provider, cwd) {
+      return (await host.modes(vocabulary.providerToHost(provider), cwd)).map(
+        (modeId) => vocabulary.modeFromHost(modeId),
+      );
+    },
     async createAgent(input) {
       const { modeId, ...config } = input.config;
       let hostMode: string | null = null;

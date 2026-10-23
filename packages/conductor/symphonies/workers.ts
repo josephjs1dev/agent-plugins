@@ -152,6 +152,24 @@ function isKnownSafeMode(modeId: string): boolean {
   return ["auto", "auto-review", "default"].includes(mode);
 }
 
+/**
+ * A mode's breadth: 0 prompts for approval, 1 reviews automatically, 2 is
+ * elevated. Null for a mode the core cannot rank, such as `plan`.
+ */
+function modeRank(modeId: string): number | null {
+  if (isKnownElevatedMode(modeId)) {
+    return 2;
+  }
+  const mode = normalizedMode(modeId).replaceAll("_", "-");
+  if (mode === "auto" || mode === "auto-review") {
+    return 1;
+  }
+  if (["default", "accept-edits", "workspace-write"].includes(mode)) {
+    return 0;
+  }
+  return null;
+}
+
 /** The permission-mode problem with a worker's mode, or null when allowed. */
 export function modeIssue(
   modeId: string | undefined,
@@ -271,6 +289,39 @@ export function workerRuntime(
     }
   }
 
+  /**
+   * A task agent's mode is never narrower than its Conductor's. A narrower or
+   * unranked mode becomes the Conductor's own mode on the same provider, else
+   * the task provider's narrowest mode at least as broad. A provider that
+   * reports no such mode keeps `modeId`.
+   */
+  async function atLeastParentMode(
+    modeId: string | undefined,
+    provider: string,
+    sameProvider: boolean,
+    parent: Agent,
+  ): Promise<string | undefined> {
+    const floor = parent.modeId ? modeRank(parent.modeId) : null;
+    if (floor === null) {
+      return modeId;
+    }
+    const rank = modeId ? modeRank(modeId) : null;
+    if (rank !== null && rank >= floor) {
+      return modeId;
+    }
+    if (sameProvider) {
+      return parent.modeId ?? modeId;
+    }
+    const candidates = (await host.modes(provider, parent.cwd))
+      .map((id) => ({ id, rank: modeRank(id) }))
+      .filter(
+        (entry): entry is { id: string; rank: number } =>
+          entry.rank !== null && entry.rank >= floor,
+      )
+      .sort((a, b) => a.rank - b.rank);
+    return candidates[0]?.id ?? modeId;
+  }
+
   function providerAndModel(selection: string): {
     provider: string;
     model: string | undefined;
@@ -303,11 +354,12 @@ export function workerRuntime(
       // An inline provider without a model uses that provider's default model.
       model = input.model;
     }
-    const modeId =
+    let modeId =
       profile?.modeId ??
       (sameProvider ? (parent.modeId ?? undefined) : undefined);
     validateMode(modeId, parent);
     await assertProviderAvailable(provider, model, parent.cwd);
+    modeId = await atLeastParentMode(modeId, provider, sameProvider, parent);
 
     // Features and thinking options are provider-specific; copy them only
     // within the Conductor's own provider. A Conductor profile carries its own
