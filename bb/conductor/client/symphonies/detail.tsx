@@ -197,7 +197,7 @@ export function SymphonyDetail({
           ))}
         </div>
         {((openAgent && sourceAgent) || deleteSymphony) && (
-          <div className="flex min-w-0 flex-wrap items-start gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
             {openAgent && sourceAgent && (
               <Button
                 variant="ghost"

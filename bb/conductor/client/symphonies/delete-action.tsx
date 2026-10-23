@@ -14,12 +14,18 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { errorMessage } from "../data";
 
 /**
  * Deletes a finished symphony after confirmation. The core's refusal rule
- * disables the action and explains why. The dialog stays open on failure so
- * the error shows beside the retry.
+ * disables the action, and a tooltip explains why. The dialog stays open on
+ * failure so the error shows beside the retry.
  */
 export function SymphonyDeleteAction({
   symphony,
@@ -47,22 +53,38 @@ export function SymphonyDeleteAction({
       setBusy(false);
     }
   };
+  const deleteButton = (
+    <Button
+      variant="ghost"
+      size="sm"
+      className="text-destructive"
+      disabled={refusal !== null}
+      onClick={() => {
+        setError(null);
+        setConfirming(true);
+      }}
+    >
+      <Icon name="Trash2" aria-hidden />
+      Delete symphony
+    </Button>
+  );
   return (
-    <div className="flex min-w-0 flex-col items-start gap-1">
-      <Button
-        variant="ghost"
-        size="sm"
-        className="text-destructive"
-        disabled={refusal !== null}
-        onClick={() => {
-          setError(null);
-          setConfirming(true);
-        }}
-      >
-        <Icon name="Trash2" aria-hidden />
-        Delete symphony
-      </Button>
-      {refusal && <p className="text-xs text-muted-foreground">{refusal}</p>}
+    <>
+      {refusal ? (
+        <TooltipProvider>
+          <Tooltip>
+            {/* A disabled button gets no pointer events, so the span is the trigger. */}
+            <TooltipTrigger asChild>
+              <span tabIndex={0} className="inline-flex">
+                {deleteButton}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>{refusal}</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      ) : (
+        deleteButton
+      )}
       <AlertDialog
         open={confirming}
         onOpenChange={(open) => {
@@ -99,6 +121,6 @@ export function SymphonyDeleteAction({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 }
