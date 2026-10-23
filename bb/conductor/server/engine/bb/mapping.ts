@@ -21,6 +21,45 @@ export function narrowerMode(
   return modeRank[a] <= modeRank[b] ? a : b;
 }
 
+/** bb's permission modes, narrowest first. */
+const allModes: BbPermissionMode[] = ["accept-edits", "auto", "full"];
+
+/** The provider fields that say which permission modes it runs. */
+export interface BbProviderModes {
+  capabilities?: { permissionModes?: readonly BbPermissionMode[] };
+}
+
+/**
+ * The permission modes a provider runs, narrowest first. A provider that does
+ * not report its modes is assumed to run all of them.
+ */
+export function providerModes(
+  provider: BbProviderModes | undefined,
+): BbPermissionMode[] {
+  const modes = provider?.capabilities?.permissionModes;
+  return modes?.length
+    ? allModes.filter((mode) => modes.includes(mode))
+    : allModes;
+}
+
+/**
+ * The narrowest supported mode at least as broad as `intended` and no broader
+ * than `ceiling`, or null when the provider runs no such mode.
+ */
+export function supportedMode(
+  intended: BbPermissionMode,
+  ceiling: BbPermissionMode,
+  supported: readonly BbPermissionMode[],
+): BbPermissionMode | null {
+  return (
+    supported.find(
+      (mode) =>
+        modeRank[mode] >= modeRank[intended] &&
+        modeRank[mode] <= modeRank[ceiling],
+    ) ?? null
+  );
+}
+
 /** The bb permission mode for a bb mode ID, or null when it is not one. */
 export function permissionMode(
   modeId: string | null | undefined,

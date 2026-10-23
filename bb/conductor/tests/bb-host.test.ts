@@ -8,6 +8,7 @@ import { agentIds } from "../server/engine/bb/agent-ids";
 import { bbSymphonyHost } from "../server/engine/bb/symphony-host";
 import { bbVocabulary } from "../shared/vocabulary";
 import { translatedHost } from "conductor/agents/vocabulary";
+import { LaunchRejectedError } from "conductor/symphonies/errors";
 
 const parent = makeThreadResponse({
   id: "thr_parent",
@@ -110,13 +111,42 @@ void test("createAgent spawns one child thread in the parent's environment", asy
     model: "gpt",
     // An unset mode inherits the parent's mode, never the project default.
     permissionMode: "auto",
-    startedOnBehalfOf: { initiator: "agent", senderThreadId: parent.id },
     pluginMetadata: { conductorAgentId: launch.agentId },
     origin: "plugin",
     originPluginId: "conductor",
   });
   assert.equal(await ids.threadOf(launch.agentId), "thr_child_1");
   assert.equal(await ids.agentOf("thr_child_1"), launch.agentId);
+});
+
+void test("createAgent rejects a launch bb refuses", async () => {
+  const { harness, host, ids } = fixture();
+  harness.sdk.stub("threads.spawn", async () => {
+    throw Object.assign(new Error("startedOnBehalfOf requires an originKind"), {
+      status: 400,
+    });
+  });
+
+  await assert.rejects(
+    host.createAgent(launch),
+    (error: unknown) =>
+      error instanceof LaunchRejectedError &&
+      error.message.includes("startedOnBehalfOf requires an originKind"),
+  );
+  assert.equal(await ids.bound(launch.agentId), false);
+});
+
+void test("createAgent leaves an unconfirmed spawn uncertain", async () => {
+  const { harness, host } = fixture();
+  harness.sdk.stub("threads.spawn", async () => {
+    throw Object.assign(new Error("Gateway timeout"), { status: 504 });
+  });
+
+  await assert.rejects(
+    host.createAgent(launch),
+    (error: unknown) =>
+      error instanceof Error && !(error instanceof LaunchRejectedError),
+  );
 });
 
 void test("agent maps a task thread back to its Conductor identity", async () => {
@@ -189,6 +219,70 @@ void test("a task thread never gets a broader mode than its parent", async () =>
 
   const [args] = harness.inspection.sdk.callsTo("threads.spawn")[0] ?? [];
   assert.equal((args as { permissionMode: string }).permissionMode, "auto");
+});
+
+/** Stubs a parent permission mode and a provider list with reported modes. */
+function withModes(
+  harness: ReturnType<typeof fixture>["harness"],
+  parentMode: string,
+  providers: { id: string; permissionModes: string[] }[],
+) {
+  harness.sdk.stub("threads.defaultExecutionOptions", async () => ({
+    model: "opus",
+    permissionMode: parentMode,
+    reasoningLevel: "high",
+    serviceTier: "default",
+    source: "client/thread/start",
+  }));
+  harness.sdk.stub("providers.list", async () =>
+    providers.map(({ id, permissionModes }) => ({
+      id,
+      available: true,
+      capabilities: { permissionModes },
+    })),
+  );
+}
+
+function spawnedMode(harness: ReturnType<typeof fixture>["harness"]) {
+  const [args] = harness.inspection.sdk.callsTo("threads.spawn")[0] ?? [];
+  return (args as { permissionMode: string }).permissionMode;
+}
+
+void test("a full-only provider runs under a full Conductor thread", async () => {
+  const { harness, host } = fixture();
+  withModes(harness, "full", [{ id: "pi", permissionModes: ["full"] }]);
+
+  await host.createAgent({ ...launch, config: { provider: "pi/model" } });
+
+  assert.equal(spawnedMode(harness), "full");
+});
+
+void test("a provider gets its next broader mode within the ceiling", async () => {
+  const { harness, host } = fixture();
+  withModes(harness, "full", [
+    { id: "acp-opencode", permissionModes: ["accept-edits", "full"] },
+  ]);
+
+  await host.createAgent({
+    ...launch,
+    config: { provider: "acp-opencode/model", modeId: "auto" },
+  });
+
+  assert.equal(spawnedMode(harness), "full");
+});
+
+void test("a provider whose modes exceed the ceiling is rejected", async () => {
+  const { harness, host, ids } = fixture();
+  withModes(harness, "auto", [{ id: "pi", permissionModes: ["full"] }]);
+
+  await assert.rejects(
+    host.createAgent({ ...launch, config: { provider: "pi/model" } }),
+    (error: unknown) =>
+      error instanceof LaunchRejectedError &&
+      error.message.includes("Provider pi runs only the full permission mode"),
+  );
+  assert.equal(harness.inspection.sdk.callsTo("threads.spawn").length, 0);
+  assert.equal(await ids.bound(launch.agentId), false);
 });
 
 void test("store profiles with Paseo IDs launch bb threads", async () => {

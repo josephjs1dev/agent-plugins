@@ -43,7 +43,11 @@ Conductor's environment. The `bb-conductor-orchestrate` skill guides the thread.
   launch.
 - **Permissions.** A task thread gets its profile's mode, else its Conductor
   thread's mode, else `accept-edits`. It never falls back to the project
-  default, and it never gets a broader mode than its Conductor thread.
+  default, and it never gets a broader mode than its Conductor thread. A
+  provider that does not run that mode gets the next broader mode it runs,
+  within the same ceiling. Pi runs only `full`, so a Pi task needs a Conductor
+  thread in `full`; otherwise the launch is rejected. The Profiles editor
+  offers only the modes each provider runs.
 - **Sends.** bb does not deduplicate sends, so the plugin records each wake
   message ID and skips a repeat.
 - **Reconciliation.** A background service reconciles symphonies every 5

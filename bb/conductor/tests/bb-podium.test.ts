@@ -264,6 +264,31 @@ void test("profiles.providers uses the profile store's IDs", async () => {
   await harness.lifecycle.dispose();
 });
 
+void test("profiles.providers offers only the modes a provider runs", async () => {
+  const { harness } = loaded();
+  harness.sdk.stub("providers.list", async () => [
+    {
+      id: "pi",
+      displayName: "Pi",
+      available: true,
+      capabilities: { permissionModes: ["full"] },
+    },
+  ]);
+
+  const catalog = (await harness.behavior.callRpc(
+    "profiles.providers",
+    {},
+  )) as ProviderCatalog;
+
+  const [provider] = catalog.providers;
+  assert.deepEqual(
+    provider?.modes.map((mode) => mode.id),
+    ["full-access"],
+  );
+  assert.equal(provider?.defaultModeId, "full-access");
+  await harness.lifecycle.dispose();
+});
+
 void test("a thread event signals the Podium to refetch", async () => {
   const { harness } = loaded();
 

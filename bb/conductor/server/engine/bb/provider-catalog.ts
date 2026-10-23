@@ -4,14 +4,14 @@ import type {
 } from "conductor/symphonies/profiles-contracts";
 import type { HostVocabulary } from "conductor/agents/vocabulary";
 import { isKnownElevatedMode } from "conductor/symphonies/workers";
-import type { BbSdk } from "./types";
+import { providerModes } from "./mapping";
+import type { BbPermissionMode, BbSdk } from "./types";
 
-/** bb's permission modes apply to every provider. */
-const bbModes = [
-  { id: "accept-edits", label: "Accept edits" },
-  { id: "auto", label: "Auto" },
-  { id: "full", label: "Full access" },
-];
+const modeLabels: Record<BbPermissionMode, string> = {
+  "accept-edits": "Accept edits",
+  auto: "Auto",
+  full: "Full access",
+};
 
 function providerStatus(
   available: boolean,
@@ -33,10 +33,6 @@ export async function providerCatalog(
   vocabulary: HostVocabulary,
 ): Promise<ProviderCatalog> {
   const providers = await sdk.providers.list();
-  const modes = bbModes.map((mode) => {
-    const id = vocabulary.modeFromHost(mode.id);
-    return { id, label: mode.label, elevated: isKnownElevatedMode(id) };
-  });
   const entries = await Promise.all(
     providers.slice(0, 32).map(async (provider): Promise<ProviderEntry> => {
       const loaded = await sdk.providers
@@ -45,6 +41,16 @@ export async function providerCatalog(
           models: [],
           modelLoadError: { detail: String(error) },
         }));
+      // The profile editor offers only the modes the provider runs.
+      const supported = providerModes(provider);
+      const modes = supported.map((mode) => {
+        const id = vocabulary.modeFromHost(mode);
+        return {
+          id,
+          label: modeLabels[mode],
+          elevated: isKnownElevatedMode(id),
+        };
+      });
       const error = loaded.modelLoadError
         ? (loaded.modelLoadError.detail ?? "Models could not be loaded.")
         : null;
@@ -54,7 +60,7 @@ export async function providerCatalog(
         available: provider.available && !error,
         status: providerStatus(provider.available, error),
         ...(error ? { error: error.slice(0, 500) } : {}),
-        defaultModeId: vocabulary.modeFromHost("accept-edits"),
+        defaultModeId: vocabulary.modeFromHost(supported[0] ?? "accept-edits"),
         models: loaded.models.slice(0, 200).map((model) => ({
           id: model.model,
           label: model.displayName || model.model,

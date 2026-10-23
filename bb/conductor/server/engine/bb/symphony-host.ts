@@ -1,9 +1,15 @@
 import type { SymphonyHost } from "conductor/symphonies/host";
 import { LaunchRejectedError } from "conductor/symphonies/errors";
 import type { AgentIds } from "./agent-ids";
-import { narrowerMode, permissionMode, toAgentSnapshot } from "./mapping";
+import {
+  narrowerMode,
+  permissionMode,
+  providerModes,
+  supportedMode,
+  toAgentSnapshot,
+} from "./mapping";
 import { isNotFound, threadReads } from "./threads";
-import type { BbKv, BbSdk } from "./types";
+import type { BbKv, BbPermissionMode, BbSdk } from "./types";
 
 /** Seeded on each task thread so a lost ID binding can be recovered. */
 const AGENT_ID_KEY = "conductorAgentId";
@@ -26,6 +32,30 @@ function providerAndModel(selection: string) {
         providerId: selection.slice(0, separator),
         model: selection.slice(separator + 1),
       };
+}
+
+/**
+ * Runs a thread spawn. bb's refusal of the request (a 4xx other than timeout
+ * or rate limit) created no thread, so it rejects the launch with bb's reason
+ * instead of leaving it uncertain.
+ */
+async function spawnOrReject<T>(spawn: () => Promise<T>): Promise<T> {
+  try {
+    return await spawn();
+  } catch (error) {
+    const status = (error as { status?: unknown } | null)?.status;
+    if (
+      typeof status === "number" &&
+      status >= 400 &&
+      status < 500 &&
+      status !== 408 &&
+      status !== 429
+    ) {
+      const reason = error instanceof Error ? error.message : String(error);
+      throw new LaunchRejectedError(`bb refused the task thread: ${reason}`);
+    }
+    throw error;
+  }
 }
 
 /** Conductor's symphony host port on bb: agents are threads, concerts are environments. */
@@ -71,6 +101,35 @@ export function bbSymphonyHost({
       threads.find((entry) => entry.metadata[AGENT_ID_KEY] === agentId)
         ?.threadId ?? null
     );
+  }
+
+  /**
+   * The task thread's permission mode. An unset mode never falls back to a
+   * broader project default, and a task thread never gets a broader mode than
+   * its Conductor thread. Within that ceiling, a provider that does not run
+   * the intended mode gets the next broader mode it runs.
+   */
+  async function launchMode(
+    providerId: string,
+    modeId: string | undefined,
+    parentMode: BbPermissionMode | null,
+  ): Promise<BbPermissionMode> {
+    let intended = permissionMode(modeId) ?? parentMode ?? FALLBACK_MODE;
+    if (parentMode) {
+      intended = narrowerMode(intended, parentMode);
+    }
+    const ceiling = parentMode ?? intended;
+    const provider = (await sdk().providers.list()).find(
+      (entry) => entry.id === providerId,
+    );
+    const supported = providerModes(provider);
+    const mode = supportedMode(intended, ceiling, supported);
+    if (!mode) {
+      throw new LaunchRejectedError(
+        `Provider ${providerId} runs only the ${supported.join(", ")} permission mode, broader than the ${ceiling} mode its Conductor thread allows. Run the Conductor thread in a broader mode, or route the task to a profile on another provider.`,
+      );
+    }
+    return mode;
   }
 
   return {
@@ -155,32 +214,29 @@ export function bbSymphonyHost({
       }
       const parentOptions = await executionOptions(parentThreadId);
       const { providerId, model } = providerAndModel(input.config.provider);
-      // Never let an unset mode fall back to a broader project default, and
-      // never give a task thread a broader mode than its Conductor thread.
-      const parentMode = permissionMode(parentOptions?.permissionMode);
-      const requested = permissionMode(input.config.modeId) ?? parentMode;
-      let mode = requested ?? FALLBACK_MODE;
-      if (parentMode) {
-        mode = narrowerMode(mode, parentMode);
-      }
-      const spawned = await sdk().threads.spawn({
-        projectId: parent.projectId,
-        environment: { type: "reuse", environmentId: input.concertId },
-        parentThreadId,
-        title: input.title,
-        prompt: input.prompt,
+      const mode = await launchMode(
         providerId,
-        ...(model ? { model } : {}),
-        permissionMode: mode,
-        ...(input.config.thinkingOptionId
-          ? { reasoningLevel: input.config.thinkingOptionId }
-          : {}),
-        startedOnBehalfOf: {
-          initiator: "agent",
-          senderThreadId: parentThreadId,
-        },
-        pluginMetadata: { [AGENT_ID_KEY]: input.agentId },
-      });
+        input.config.modeId,
+        permissionMode(parentOptions?.permissionMode),
+      );
+      // bb accepts `startedOnBehalfOf` only on forks; `parentThreadId` links
+      // the task thread to its Conductor thread.
+      const spawned = await spawnOrReject(() =>
+        sdk().threads.spawn({
+          projectId: parent.projectId,
+          environment: { type: "reuse", environmentId: input.concertId },
+          parentThreadId,
+          title: input.title,
+          prompt: input.prompt,
+          providerId,
+          ...(model ? { model } : {}),
+          permissionMode: mode,
+          ...(input.config.thinkingOptionId
+            ? { reasoningLevel: input.config.thinkingOptionId }
+            : {}),
+          pluginMetadata: { [AGENT_ID_KEY]: input.agentId },
+        }),
+      );
       await ids.bind(input.agentId, spawned.id);
     },
     async send(agentId, prompt, messageId) {
