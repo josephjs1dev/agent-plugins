@@ -137,6 +137,14 @@ void test("a source thread orchestrates, dispatches a task thread, and finishes"
   );
   const symphonyId = orchestrated.symphonyId as string;
   assert.match(symphonyId, /^[0-9a-f-]{36}$/);
+  const ongoing = async (threadId: string) =>
+    (
+      (await harness.behavior.callRpc("symphonies.ongoing", {
+        threadId,
+      })) as { symphonies: { id: string }[] }
+    ).symphonies.map((symphony) => symphony.id);
+  assert.deepEqual(await ongoing(source.id), [symphonyId]);
+  assert.deepEqual(await ongoing("thr_other"), []);
 
   body(
     await call(source.id, "define", {
@@ -199,5 +207,6 @@ void test("a source thread orchestrates, dispatches a task thread, and finishes"
     }),
   );
   assert.equal((finished.symphony as { status: string }).status, "completed");
+  assert.deepEqual(await ongoing(source.id), []);
   await harness.lifecycle.dispose();
 });

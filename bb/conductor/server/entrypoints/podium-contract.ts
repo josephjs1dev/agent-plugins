@@ -17,6 +17,7 @@ import {
   listSymphoniesDefinition,
   readSymphonyDefinition,
 } from "conductor/symphonies/rpc";
+import { symphonyListEntrySchema } from "conductor/symphonies/models";
 
 interface Typed {
   "~standard": { types?: { input: unknown; output: unknown } | undefined };
@@ -60,6 +61,11 @@ export const podiumContract = defineRpcContract({
   "agents.thread": method({
     input: z.object({ agentId: identifier }).strict(),
     output: z.object({ threadId: z.string() }),
+  }),
+  // bb-only: the thread header pill lists the thread's ongoing symphonies.
+  "symphonies.ongoing": method({
+    input: z.object({ threadId: identifier }).strict(),
+    output: z.object({ symphonies: z.array(symphonyListEntrySchema) }),
   }),
 });
 export type PodiumContract = typeof podiumContract;

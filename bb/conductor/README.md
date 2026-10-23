@@ -15,6 +15,9 @@ Conductor's environment. The `bb-conductor-orchestrate` skill guides the thread.
 - The **Conductor** page in bb's navigation rail is the Podium. It has the
   Agents queue (questions, approvals, failures, reminders), the Symphonies
   list and score, and the worker Profiles editor.
+- A Conductor thread with ongoing symphonies shows a pill in its thread
+  header. The pill opens a list of those symphonies. Each entry opens its
+  symphony in the Podium.
 - `bb conductor list` lists the stored symphonies. Add `--json` for JSON output.
 - `conductor_get` (from the Conductor or a task thread) shows one symphony.
 

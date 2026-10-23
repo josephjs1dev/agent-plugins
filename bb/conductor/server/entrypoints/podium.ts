@@ -11,6 +11,7 @@ import type { ProviderCatalog } from "conductor/symphonies/profiles-contracts";
 import { profilesState } from "conductor/symphonies/profile-catalog";
 import { SymphonyError } from "conductor/symphonies/errors";
 import { listWithProjects } from "conductor/symphonies/projects";
+import { ongoingGroups } from "conductor/podium/ongoing";
 import type { AgentIds } from "../engine/bb/agent-ids";
 import { PODIUM_CHANGED } from "../../shared/signals";
 import { podiumContract } from "./podium-contract";
@@ -106,6 +107,13 @@ export function registerPodium(
     bb.events.on(event, changed);
   }
 
+  const list = (concertId?: string) =>
+    listWithProjects(
+      () => service.store.list(),
+      async () => (await pages((cursor) => agents.concerts(cursor))).entries,
+      concertId,
+    );
+
   bb.rpc.register(podiumContract, {
     async "agents.get"(input) {
       try {
@@ -154,16 +162,7 @@ export function registerPodium(
         }, "Conductor could not save this Podium preference."),
       ),
     "symphonies.list": (input) =>
-      guarded(
-        () =>
-          listWithProjects(
-            () => service.store.list(),
-            async () =>
-              (await pages((cursor) => agents.concerts(cursor))).entries,
-            input.concertId,
-          ),
-        SYMPHONY_FAILURE,
-      ),
+      guarded(() => list(input.concertId), SYMPHONY_FAILURE),
     "symphonies.read": ({ id }) =>
       guarded(() => service.store.read(id), SYMPHONY_FAILURE),
     "symphonies.delete": ({ id, version }) =>
@@ -189,6 +188,15 @@ export function registerPodium(
     "agents.thread": async ({ agentId }) => ({
       threadId: await ids.threadOf(agentId),
     }),
+    "symphonies.ongoing": ({ threadId }) =>
+      guarded(async () => {
+        const [agentId, { symphonies }] = await Promise.all([
+          ids.agentOf(threadId),
+          list(),
+        ]);
+        const group = ongoingGroups(symphonies, new Set([agentId]));
+        return { symphonies: group.get(agentId)?.symphonies ?? [] };
+      }, SYMPHONY_FAILURE),
   });
   return changed;
 }

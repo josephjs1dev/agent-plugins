@@ -1,3 +1,5 @@
+import { useLayoutEffect } from "react";
+import type { PluginNavPanelProps } from "@get-bb/plugin-sdk/app";
 import type { ViewState } from "conductor/podium/session";
 import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
@@ -5,6 +7,7 @@ import { AgentsSection } from "../agents/section";
 import { ProfilesSection } from "../profiles/section";
 import { SymphoniesSection } from "../symphonies/section";
 import { PodiumProvider, usePodium, useViewState } from "./context";
+import { symphonyIdOf } from "./links";
 
 const SECTIONS: {
   id: ViewState["section"];
@@ -56,10 +59,26 @@ function Sections() {
   );
 }
 
+/** Selects the symphony a deep link names, such as the header pill's. */
+function DeepLink({ subPath }: { subPath: string }) {
+  const { session } = usePodium();
+  useLayoutEffect(() => {
+    const symphonyId = symphonyIdOf(subPath);
+    if (symphonyId) {
+      session.update({
+        section: "symphonies",
+        symphonySelection: { kind: "symphony", id: symphonyId },
+      });
+    }
+  }, [session, subPath]);
+  return null;
+}
+
 /** The Podium: the Agents queue, Symphonies, and worker Profiles. */
-export function PodiumView() {
+export function PodiumView({ subPath }: PluginNavPanelProps) {
   return (
     <PodiumProvider>
+      <DeepLink subPath={subPath} />
       <div className="flex h-full min-h-0 flex-col">
         <SectionTabs />
         <Sections />

@@ -44,7 +44,7 @@ profiles to import or sync.
 | Orchestrate skill install                                    | done: `paseo/conductor/server/skills/`                         | done: manifest `skills/`                          |
 | Podium UI (Agents, Symphonies, score graph, profiles editor) | done: `paseo/conductor/client/`                                | done: `bb/conductor/client/`                      |
 | Profile import and sync with host profiles                   | done                                                           | n/a: bb has no host profiles                      |
-| Composer pills for ongoing symphonies                        | done: `paseo/conductor/client/symphonies/pills.ts`             | planned                                           |
+| Composer pills for ongoing symphonies                        | done: `paseo/conductor/client/symphonies/pills.ts`             | done: thread header pill                          |
 
 The core holds the Podium's view logic in `packages/conductor/podium/`. Each
 adapter renders it with its host's UI: React Native in Paseo, React DOM with
