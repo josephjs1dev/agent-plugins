@@ -1227,6 +1227,29 @@ export function orchestration(
     );
   };
   /**
+   * True when a reopen worker override names the worker the previous launch
+   * runs. An override may name a profile that the launch stores by id, so
+   * profile references compare by their resolved catalog id; "inherit" and an
+   * omitted profile are the same.
+   */
+  const overrideMatchesLaunch = (
+    profiles: readonly ConductorProfile[],
+    intended: WorkerChoice,
+    launch: NonNullable<Attempt["launch"]>,
+  ): boolean => {
+    const previous = launchChoice(launch);
+    const profileKey = (choice: WorkerChoice): string | null =>
+      chosenProfile(profiles, choice)?.id ??
+      (choice.profile === "inherit" ? null : (choice.profile ?? null));
+    return (
+      profileKey(intended) === profileKey(previous) &&
+      (intended.provider ?? null) === (previous.provider ?? null) &&
+      (intended.model ?? null) === (previous.model ?? null) &&
+      (intended.thinkingOptionId ?? null) ===
+        (previous.thinkingOptionId ?? null)
+    );
+  };
+  /**
    * Validates a Conductor scope addition for a retry and returns the grants to
    * record on the attempt the retry creates or resumes. The plan never changes:
    * the additions live on the attempt and survive every later attempt of the
@@ -1546,9 +1569,18 @@ export function orchestration(
         ...(entry?.note ? { note: entry.note } : {}),
       };
       let created = false;
-      // A reopen worker override never reuses the previous agent, so the
-      // replacement starts with the previous report and a handoff.
-      if (previous?.launch && !overrideWorker) {
+      // A reopen worker override that changes the worker never reuses the
+      // previous agent, so the replacement starts with the previous report and
+      // a handoff. An override that names the same worker is no change.
+      if (
+        previous?.launch &&
+        (!overrideWorker ||
+          overrideMatchesLaunch(
+            (await routing.load()).profiles,
+            workerChoice(overrideWorker),
+            previous.launch,
+          ))
+      ) {
         const status = await workers().inspect(previous.agentId);
         if (status.active) {
           continue;

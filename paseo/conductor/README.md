@@ -399,8 +399,9 @@ agent's worker choice, when the agent is idle and can receive a message;
 otherwise a new agent starts with the previous report and the same worker
 choice. `reopen` may provide a worker override (`profile` or inline
 `provider`/`model`/`thinkingOptionId`); it must include `routing.reason`, and
-uses the same routing validation and override evidence as task definition. A
-check or review failure is not a harness failure for switching models. An active agent is never replaced. Its prompt carries the full finding
+uses the same routing validation and override evidence as task definition. An
+override that names the previous launch's worker is not a change, so the task
+still continues on its agent. A check or review failure is not a harness failure for switching models. An active agent is never replaced. Its prompt carries the full finding
 objects, captured when `loop` is accepted. `note` and `addWrites` work as on a
 retry and are kept with the loop until the task starts, and `after` adds
 prerequisites for this loop only; `after` edges must not form a cycle with

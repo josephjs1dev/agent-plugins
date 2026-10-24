@@ -5083,6 +5083,63 @@ void test("a loop reopen override snapshots the replacement profile name", async
   assert.equal(loop.reopened[0]?.worker?.profileName, "Big");
 });
 
+void test("a loop reopen override naming the same worker continues on its agent", async () => {
+  const f = await fixture({
+    routing: {
+      profiles: {
+        small: { roles: ["implementation", "review"], size: "small" },
+      },
+    },
+    profiles: [{ id: "small", name: "Small", notes: "", provider: "fake" }],
+  });
+  const plan = await f.start("reopen-same-worker");
+  assert.ok(plan.source.agentId);
+  const symphony = await f.define(plan, [
+    { ...task("api", [], ["src/api"]), profile: "small" },
+    reviewTask("review", ["api"]),
+  ]);
+  const api = latestAttempt(symphony, "api");
+  assert.ok(api);
+  await f.report(plan.id, "api");
+  f.active.set(api.agentId, false);
+  await f.reconcile();
+  const review1 = latestAttempt(await f.read(plan.id), "review");
+  assert.ok(review1);
+  await f.send(review1.agentId, {
+    kind: "report",
+    symphonyId: plan.id,
+    attemptId: review1.id,
+    report: needsChangesReport(),
+  });
+  f.active.set(review1.agentId, false);
+  await f.reconcile();
+
+  const before = f.launches.size;
+  // The override names the profile the launch stores by id.
+  await f.send(plan.source.agentId, {
+    kind: "loop",
+    symphonyId: plan.id,
+    reason: "Fix F1",
+    reopen: [
+      {
+        taskId: "api",
+        findings: ["review#F1"],
+        profile: "Small",
+        routing: { reason: "Keep the same backend worker." },
+      },
+    ],
+  });
+  const api2 = latestAttempt(await f.read(plan.id), "api");
+  assert.ok(api2);
+  assert.notEqual(api2.id, api.id, "the loop creates a new attempt");
+  assert.equal(api2.agentId, api.agentId, "the same agent continues");
+  assert.equal(f.launches.size, before, "no new agent starts");
+  assert.ok(
+    f.wakes.some((wake) => wake.startsWith(`${api.agentId}:continue:`)),
+    "the agent receives the continuation",
+  );
+});
+
 void test("a strict retry preflight validates the persisted profile id after a rename", async () => {
   const originalId = "11111111-1111-4111-8111-111111111111";
   const decoyId = "22222222-2222-4222-8222-222222222222";
