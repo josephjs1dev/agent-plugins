@@ -20,6 +20,11 @@ export interface QuotaCapability {
 export interface UsageCollector {
   harness: Harness;
   providers: readonly Provider[];
+  /**
+   * Changes when the collector would read existing sources differently, such
+   * as new roots or prices. A changed revision rescans its whole history.
+   */
+  revision?: string;
   collectHistory(scan: HistoryScan): Promise<HistoryCollection>;
   quota?: QuotaCapability;
 }

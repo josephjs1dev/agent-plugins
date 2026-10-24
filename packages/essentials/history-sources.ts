@@ -24,7 +24,7 @@ type HistoryLineParser = ((line: string) => HistoryRow | undefined) & {
 type CreateParser = (since: number, seen: Set<string>) => HistoryLineParser;
 
 export function collectCodex(
-  roots: string[],
+  roots: readonly string[],
   since: number,
   signal: AbortSignal,
   limits?: ScanLimits,
@@ -33,7 +33,7 @@ export function collectCodex(
 }
 
 export function collectJsonl(
-  roots: string[],
+  roots: readonly string[],
   since: number,
   signal: AbortSignal,
   createParser: CreateParser,
@@ -48,7 +48,7 @@ export function collectJsonl(
 
 /** Import complete logs newest-first; skipped logs keep their saved snapshots. */
 async function scanJsonl(
-  roots: string[],
+  roots: readonly string[],
   since: number,
   signal: AbortSignal,
   createParser: CreateParser,

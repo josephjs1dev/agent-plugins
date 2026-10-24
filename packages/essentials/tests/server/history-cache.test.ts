@@ -7,6 +7,7 @@ import { test } from "node:test";
 import { createHistoryStore } from "../../history-store";
 import { readSavedHistory, writeSavedHistory } from "../../history-files";
 import type { HistoryRow } from "../../history";
+import { usageCollectors } from "../../collectors/index";
 
 const NOW = Date.parse("2026-10-03T12:00:00Z");
 const DAY = 86_400_000;
@@ -15,9 +16,17 @@ function collectorStates(checkpoint: number, incomplete = false) {
 
   return {
     codex: { updatedThrough, incomplete },
-    pi: { updatedThrough, incomplete: false },
+    pi: {
+      updatedThrough,
+      incomplete: false,
+      revision: usageCollectors.pi.revision,
+    },
     opencode: { updatedThrough, incomplete: false },
-    claude: { updatedThrough, incomplete: false },
+    claude: {
+      updatedThrough,
+      incomplete: false,
+      revision: usageCollectors.claude.revision,
+    },
   };
 }
 
@@ -150,6 +159,69 @@ test("fresh disk cache survives reload without rescanning or writing", async () 
     assert.equal(calls, 0);
     assert.deepEqual(await readFile(join(directory, "history.json")), before);
   } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("a changed collector revision rescans only that harness and re-prices its rows", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "paseo-cache-revision-"));
+  const claudeRow: HistoryRow = {
+    ...row(),
+    provider: "claude",
+    harness: "claude",
+    model: "claude-haiku-5-5",
+  };
+  const collectors = collectorStates(NOW - 60_000);
+  await writeSavedHistory(directory, {
+    version: 3,
+    scannedAt: iso(NOW - 60_000),
+    collectors: {
+      ...collectors,
+      claude: { ...collectors.claude, revision: "old-rates" },
+    },
+    rows: [row(), claudeRow],
+  });
+  const windows = new Map<string, number | undefined>();
+  const store = createHistoryStore(
+    directory,
+    fakeCollectors(async (harness, _since, _signal, modified) => {
+      windows.set(harness, modified);
+
+      return harness === "claude"
+        ? {
+            rows: [
+              {
+                ...claudeRow,
+                totals: { ...claudeRow.totals, cost: 0.01 },
+              },
+            ],
+            incomplete: false,
+          }
+        : { rows: [], incomplete: false };
+    }),
+    () => NOW,
+  );
+
+  try {
+    await store.refresh();
+    assert.equal(windows.get("claude"), NOW - 90 * DAY);
+    assert.equal(windows.get("codex"), NOW - DAY);
+    const saved = await readSavedHistory(directory);
+    const claude = saved?.rows.filter((entry) => entry.harness === "claude");
+    assert.deepEqual(
+      claude?.map((entry) => entry.totals.cost),
+      [0.01],
+    );
+    assert.equal(
+      saved?.collectors.claude?.revision,
+      usageCollectors.claude.revision,
+    );
+    assert.equal(
+      saved?.rows.find((entry) => entry.harness === "codex")?.totals.input,
+      100,
+    );
+  } finally {
+    await store.close();
     await rm(directory, { recursive: true, force: true });
   }
 });

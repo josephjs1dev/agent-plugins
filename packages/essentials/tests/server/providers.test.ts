@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { providerIds } from "../../providers";
+import { providerIds, providerOfModel } from "../../providers";
 import { readUsageDefinition } from "../../usage";
 import { createUsageReader } from "../../usage-reader";
 
@@ -18,6 +18,16 @@ test("provider RPC validation rejects unknown providers before dispatch", () => 
       true,
     );
   }
+});
+
+test("model IDs resolve to the subscription their model provider bills", () => {
+  assert.equal(providerOfModel("opencode-go/gpt-6-luna"), "opencode-go");
+  assert.equal(providerOfModel("openai-codex/gpt-5.5"), "chatgpt");
+  assert.equal(providerOfModel("anthropic/claude-opus-5-5"), "claude");
+  assert.equal(providerOfModel("openai/gpt-5.5"), undefined);
+  assert.equal(providerOfModel("gpt-5.5"), undefined);
+  assert.equal(providerOfModel("/opencode-go"), undefined);
+  assert.equal(providerOfModel("constructor/model"), undefined);
 });
 
 test("registered providers use separate caches and sanitize collector quota errors", async () => {

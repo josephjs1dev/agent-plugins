@@ -39,12 +39,21 @@ export function createHistoryCache(
       const checkedAt = cache ? Date.parse(cache.scannedAt) : 0;
       // Migrated caches have no collector checkpoints and require a full scan.
       const hasCheckpoints = collectors.every(
-        (collector) => cache?.collectors[collector.harness]?.updatedThrough,
+        (collector) =>
+          isCurrent(collector) &&
+          cache?.collectors[collector.harness]?.updatedThrough,
       );
       nextScan =
         hasCheckpoints && checkedAt <= now() ? checkedAt + SCAN_INTERVAL_MS : 0;
     })();
     await hydration;
+  }
+
+  /** Whether the cache holds this collector's history at its revision. */
+  function isCurrent(collector: UsageCollector): boolean {
+    return (
+      cache?.collectors[collector.harness]?.revision === collector.revision
+    );
   }
 
   async function collectWindow(
@@ -72,9 +81,14 @@ export function createHistoryCache(
     const since = startedAt - RETENTION_MS;
     const results = await Promise.all(
       collectors.map(async (collector) => {
+        // A changed revision drops the checkpoint, so the full rescan's rows
+        // replace each session day it still finds on disk.
         const state: CollectorState = {
-          ...cache?.collectors[collector.harness],
+          ...(isCurrent(collector) ? cache?.collectors[collector.harness] : {}),
           incomplete: false,
+          ...(collector.revision === undefined
+            ? {}
+            : { revision: collector.revision }),
         };
         const checkpoint =
           state.updatedThrough === undefined

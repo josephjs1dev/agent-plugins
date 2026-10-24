@@ -1,3 +1,5 @@
+import { join } from "node:path";
+import { createUsageCollectors } from "essentials/collectors/index";
 import { createCodexResetter } from "essentials/codex-resetter";
 import { createHistoryStore } from "essentials/history-store";
 import { createUsageReader } from "essentials/usage-reader";
@@ -8,6 +10,8 @@ const HISTORY_FAILURE =
 
 export interface UsageOptions {
   directory: string;
+  /** The bb server's data directory, where bb's Pi provider keeps sessions. */
+  bbDataDirectory: string;
 }
 
 /**
@@ -15,10 +19,17 @@ export interface UsageOptions {
  * workspaces, so history is always host-wide and the core's workspace totals
  * stay empty.
  */
-export function usageHandlers({ directory }: UsageOptions) {
+export function usageHandlers({ directory, bbDataDirectory }: UsageOptions) {
   const reader = createUsageReader();
   const resetter = createCodexResetter(reader);
-  const history = createHistoryStore(directory);
+  const history = createHistoryStore(
+    directory,
+    Object.values(
+      createUsageCollectors({
+        piSessionDirectories: [join(bbDataDirectory, "pi-bridge-sessions")],
+      }),
+    ),
+  );
 
   const handlers: Pick<
     Handlers,

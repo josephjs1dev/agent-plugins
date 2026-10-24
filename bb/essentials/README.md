@@ -9,14 +9,19 @@ provider logins, and the data sources in detail.
 ## Use
 
 - **Provider usage.** A thread-header button shows the remaining quota of the
-  subscription behind the thread's provider: ChatGPT for Codex, Claude for
-  Claude Code, and OpenCode Go for OpenCode (`acp-opencode`). Other providers
-  show ChatGPT. Its
+  subscription behind the thread's model or provider. A model ID names its
+  subscription first: OpenCode Go for `opencode-go/…`, ChatGPT for
+  `openai-codex/…`, and Claude for `anthropic/…`, as Pi and OpenCode report
+  them. Otherwise the provider
+  picks it: ChatGPT for Codex, Claude for Claude Code, and OpenCode Go for
+  OpenCode (`acp-opencode`). Other providers show ChatGPT. Its
   popover shows the quota windows, credits, and banked Codex resets, and can
   switch to another subscription until the thread's provider changes.
 - **Usage history.** The **Usage history** page in the navigation rail, and
   **Usage history** in the thread's right panel, show daily charts and
-  breakdowns of every session on the host over 7 or 30 days.
+  breakdowns of every session on the host over 7 or 30 days, including Pi
+  threads, whose sessions bb keeps in `pi-bridge-sessions` under its data
+  directory.
 - **Context Reminder.** After each turn of a top-level thread, Essentials
   reads the thread's context-window fill. When a reminder comes due, a card
   above the composer offers **Compact now**, **Snooze**, and **Dismiss**. Dismiss

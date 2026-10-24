@@ -2,6 +2,7 @@ import { open } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { z } from "zod";
+import { CLAUDE_RATE_DATE } from "../claude-cost";
 import { normalizeClaude } from "../quota";
 import { createClaudeHistoryParser } from "../history-parsers";
 import { collectJsonl } from "../history-sources";
@@ -129,6 +130,8 @@ async function fetchClaudeLimits(
 export const claudeCollector: UsageCollector = {
   harness: "claude",
   providers: ["claude"],
+  // Rows carry cost estimates, so new rates must re-price existing history.
+  revision: CLAUDE_RATE_DATE,
   quota: claudeQuota,
   collectHistory({ since, signal, modifiedSince }) {
     return collectClaude(since, signal, undefined, modifiedSince);

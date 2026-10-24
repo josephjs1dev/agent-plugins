@@ -10,6 +10,7 @@ const collectorStateSchema = z.object({
   updatedThrough: z.string().datetime().optional(),
   incomplete: z.boolean(),
   backfillWarningAt: z.string().datetime().optional(),
+  revision: z.string().max(64).optional(),
 });
 export type CollectorState = z.infer<typeof collectorStateSchema>;
 const savedHistoryShape = {

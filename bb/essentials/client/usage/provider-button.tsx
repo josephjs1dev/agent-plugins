@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   experimental_useSidebarThreads as useSidebarThreads,
+  useSdk,
   type PluginThreadHeaderActionProps,
 } from "@get-bb/plugin-sdk/app";
 import {
   providerDefinitions,
   providerIds,
+  providerOfModel,
   type Provider,
 } from "essentials/providers";
 import { usageLabel } from "essentials/usage";
@@ -28,17 +30,57 @@ import { useUsage } from "./use-usage";
 
 const FIRST_PROVIDER: Provider = providerIds[0] ?? "chatgpt";
 
-/** The quota provider of the thread's agent provider, or null for others. */
+/**
+ * The thread's model, refetched whenever the thread changes. Null until it
+ * loads, or when bb cannot report it.
+ */
+function useThreadModel(
+  threadId: string,
+  updatedAt: number | undefined,
+): string | null {
+  const sdk = useSdk();
+  const [loaded, setLoaded] = useState<{
+    threadId: string;
+    model: string | null;
+  } | null>(null);
+  useEffect(() => {
+    if (updatedAt === undefined) {
+      return;
+    }
+    const controller = new AbortController();
+    sdk.threads
+      .defaultExecutionOptions({ threadId, signal: controller.signal })
+      .then(
+        (options) => setLoaded({ threadId, model: options?.model ?? null }),
+        // Without a model, the agent provider still picks the subscription.
+        () => undefined,
+      );
+    return () => controller.abort();
+  }, [sdk, threadId, updatedAt]);
+  return loaded?.threadId === threadId ? loaded.model : null;
+}
+
+/**
+ * The quota provider of the thread's model, such as OpenCode Go for Pi on
+ * `opencode-go/…`, else of its agent provider, or null for others.
+ */
 function useThreadQuotaProvider(threadId: string): Provider | null {
   const { threads } = useSidebarThreads();
   const thread = threads.find((candidate) => candidate.id === threadId);
-  return thread ? quotaProviderOf(thread.providerId) : null;
+  const model = useThreadModel(threadId, thread?.updatedAt);
+  if (!thread) {
+    return null;
+  }
+  return (
+    (model === null ? undefined : providerOfModel(model)) ??
+    quotaProviderOf(thread.providerId)
+  );
 }
 
 /**
  * The thread header's quota control. It follows the subscription behind the
- * thread's provider. A provider picked in the popover holds until the
- * thread's provider changes. Each mounted header keeps its own pick, so split
+ * thread's model or provider. A provider picked in the popover holds until
+ * that subscription changes. Each mounted header keeps its own pick, so split
  * panes choose independently.
  */
 export function ProviderUsageButton({

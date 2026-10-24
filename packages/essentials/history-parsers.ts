@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { estimateClaudeCost } from "./claude-cost";
 import type { HistoryRow, Totals } from "./history";
-import type { Provider } from "./providers";
+import { providerOfModelProvider, type Provider } from "./providers";
 
 const count = z.number().finite().nonnegative();
 const codexTokensSchema = z.object({
@@ -213,14 +213,18 @@ const piMessageSchema = piModelSchema.extend({
   usage: piUsageSchema,
 });
 
-function piProviderId(provider: string): Provider | undefined {
-  if (provider === "openai-codex") {
-    return "chatgpt";
-  }
+/** The subscriptions whose usage Pi history records. */
+export const piHistoryProviders: readonly Provider[] = [
+  "chatgpt",
+  "opencode-go",
+];
 
-  if (provider === "opencode-go") {
-    return "opencode-go";
-  }
+function piProviderId(modelProvider: string): Provider | undefined {
+  const provider = providerOfModelProvider(modelProvider);
+
+  return provider && piHistoryProviders.includes(provider)
+    ? provider
+    : undefined;
 }
 
 /** Pi usage is per request, unlike Codex's cumulative token counters. */

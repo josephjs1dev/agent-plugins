@@ -11,6 +11,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 
+import { createUsageCollectors } from "../../collectors/index";
 import { collectPi, piHistoryDirectory } from "../../collectors/pi";
 import { collectOpenCode } from "../../history-sources";
 import { createHistoryStore } from "../../history-store";
@@ -36,6 +37,57 @@ test("Pi resolves daemon environment session path overrides", () => {
     }),
     "/usage",
   );
+});
+
+test("Pi also reads session directories a host passes in", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "essentials-pi-host-"));
+  const saved = process.env.PI_USAGE_SESSION_DIR;
+  process.env.PI_USAGE_SESSION_DIR = join(directory, "missing");
+
+  try {
+    const hostSessions = join(directory, "host-sessions");
+    await mkdir(hostSessions);
+    const timestamp = new Date().toISOString();
+    const entries = [
+      { type: "session", version: 3, id: "host", cwd: "/workspace", timestamp },
+      {
+        type: "message",
+        id: "reply",
+        timestamp,
+        message: {
+          role: "assistant",
+          provider: "opencode-go",
+          model: "deepseek-v4.1-flash",
+          usage: { input: 10, output: 20 },
+        },
+      },
+    ];
+    await writeFile(
+      join(hostSessions, "pi_host.jsonl"),
+      entries.map((entry) => JSON.stringify(entry)).join("\n"),
+    );
+    const signal = new AbortController().signal;
+    const scan = { since: 0, signal };
+    const { rows } = await createUsageCollectors({
+      piSessionDirectories: [hostSessions],
+    }).pi.collectHistory(scan);
+    assert.deepEqual(
+      rows.map((row) => [row.provider, row.sessionId]),
+      [["opencode-go", "host"]],
+    );
+    assert.deepEqual(
+      (await createUsageCollectors().pi.collectHistory(scan)).rows,
+      [],
+    );
+  } finally {
+    if (saved === undefined) {
+      delete process.env.PI_USAGE_SESSION_DIR;
+    } else {
+      process.env.PI_USAGE_SESSION_DIR = saved;
+    }
+
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 
 test("Pi scans nested JSONL read-only, deduplicates copies, skips links and tolerates partial lines", async () => {

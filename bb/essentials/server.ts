@@ -14,7 +14,10 @@ export default function plugin(bb: BbPluginApi): void {
   // Both hosts derive the history cache from the same local records, so they
   // share it.
   const directory = historyDirectory();
-  const usage = usageHandlers({ directory });
+  const usage = usageHandlers({
+    directory,
+    bbDataDirectory: bb.server.experimental_dataDir,
+  });
   const reminder = contextReminder({
     sdk,
     settings: bb.settings.define(reminderSettings),

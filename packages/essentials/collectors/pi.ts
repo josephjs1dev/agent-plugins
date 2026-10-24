@@ -1,17 +1,32 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { createPiHistoryParser } from "../history-parsers";
+import { createPiHistoryParser, piHistoryProviders } from "../history-parsers";
 import type { HistoryCollection } from "../history";
 import { collectJsonl } from "../history-sources";
 import type { UsageCollector } from "./types";
 
-export const piCollector: UsageCollector = {
-  harness: "pi",
-  providers: ["chatgpt", "opencode-go"],
-  collectHistory({ since, signal, modifiedSince }) {
-    return collectPi(since, signal, undefined, modifiedSince);
-  },
-};
+/**
+ * Pi history from Pi's own session directory and `extraDirectories`, such as
+ * the directory a host runs Pi with. They must hold Pi session JSONL.
+ */
+export function createPiCollector(
+  extraDirectories: readonly string[] = [],
+): UsageCollector {
+  return {
+    harness: "pi",
+    providers: piHistoryProviders,
+    // Bumped when hosts could add session directories.
+    revision: "session-directories",
+    collectHistory({ since, signal, modifiedSince }) {
+      return collectPi(
+        since,
+        signal,
+        [piHistoryDirectory(), ...extraDirectories],
+        modifiedSince,
+      );
+    },
+  };
+}
 
 function expandHome(path: string): string {
   if (path === "~") {
@@ -35,7 +50,7 @@ export function piHistoryDirectory(env = process.env): string {
 export function collectPi(
   since: number,
   signal: AbortSignal,
-  roots = [piHistoryDirectory()],
+  roots: readonly string[] = [piHistoryDirectory()],
   modifiedSince?: number,
 ): Promise<HistoryCollection> {
   return collectJsonl(

@@ -42,7 +42,8 @@ Open **Usage history** from a usage popover to explore:
 - Estimated USD costs: recorded costs, or published API rates for Codex and Claude.
 
 History combines native Codex and Claude Code session logs, Pi records for ChatGPT
-and OpenCode Go, and OpenCode Go database records.
+and OpenCode Go, and OpenCode Go database records. When Claude rates or Pi sources change, the next scan re-reads that
+harness's full 90 days, so earlier rows pick up the change.
 Workspace scope counts sessions started by that workspace's Paseo agents, so
 workspaces sharing a checkout stay separate. Essentials saves these session links
 on the daemon host so deleted agents remain attributed. Sessions started outside

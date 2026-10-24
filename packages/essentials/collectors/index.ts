@@ -2,17 +2,28 @@ import { historyCollectionSchema, type HistoryCollection } from "../history";
 import type { Harness } from "../harnesses";
 import type { Provider } from "../providers";
 import { codexCollector } from "./codex";
-import { piCollector } from "./pi";
+import { createPiCollector } from "./pi";
 import { opencodeCollector } from "./opencode";
 import { claudeCollector } from "./claude";
 import type { HistoryScan, QuotaCapability, UsageCollector } from "./types";
 
-export const usageCollectors: Record<Harness, UsageCollector> = {
-  codex: codexCollector,
-  pi: piCollector,
-  opencode: opencodeCollector,
-  claude: claudeCollector,
-};
+export interface UsageCollectorOptions {
+  /** Further Pi session directories, such as the one a host runs Pi with. */
+  piSessionDirectories?: readonly string[];
+}
+
+export function createUsageCollectors({
+  piSessionDirectories = [],
+}: UsageCollectorOptions = {}): Record<Harness, UsageCollector> {
+  return {
+    codex: codexCollector,
+    pi: createPiCollector(piSessionDirectories),
+    opencode: opencodeCollector,
+    claude: claudeCollector,
+  };
+}
+
+export const usageCollectors = createUsageCollectors();
 
 export function quotaCapability(provider: Provider): QuotaCapability {
   const capabilities = Object.values(usageCollectors).flatMap((entry) =>
