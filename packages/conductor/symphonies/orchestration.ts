@@ -13,6 +13,7 @@ import { commandTaskDefinition, symphonyConductor } from "./conductor";
 import { randomUUID } from "node:crypto";
 import {
   attemptLoop,
+  conflictReason,
   currentLoop,
   currentLoopRecord,
   effectiveTask,
@@ -23,7 +24,6 @@ import {
   pendingLoopEntry,
   prerequisiteCycle,
   prerequisiteReady,
-  scopeConflictReason,
   scoreIssues,
   transitiveDependents,
   type LoopScheduleEntry,
@@ -400,10 +400,7 @@ export function orchestration(
         // addition, and the latest attempt's widen grants, so both conflict
         // checks cannot drift apart.
         const held = effectiveTask(other, definition);
-        if (
-          attemptHoldsResources(holding) &&
-          scopeConflictReason(candidate, held)
-        ) {
+        if (attemptHoldsResources(holding) && conflictReason(candidate, held)) {
           return `task "${definition.id}" in "${other.title}" still holds its resources.`;
         }
       }
@@ -415,7 +412,7 @@ export function orchestration(
   };
   /**
    * True when a task may start an attempt now. Shared by fresh reservations and
-   * same-agent continuations so writers never overlap in time.
+   * same-agent continuations so conflicting scopes never overlap in time.
    */
   const canReserve = async (
     current: StoredSymphony,
@@ -1318,10 +1315,7 @@ export function orchestration(
         if (!symphonyHoldsResources(other) || !attemptHoldsResources(holding)) {
           continue;
         }
-        const reason = scopeConflictReason(
-          grown,
-          effectiveTask(other, definition),
-        );
+        const reason = conflictReason(grown, effectiveTask(other, definition));
         if (reason) {
           throw new SymphonyError(
             `addWrites refused: ${paths.join(", ")} overlaps task "${definition.id}" in ${other.title} (${reason}).`,
@@ -1473,7 +1467,7 @@ export function orchestration(
       ) {
         return current;
       }
-      // Keep writers serialized even though the agent is reused.
+      // Keep conflicting scopes apart even though the agent is reused.
       if (!(await canReserve(current, task, additions))) {
         return current;
       }

@@ -110,6 +110,27 @@ void test("the assignment states the three report outcomes and review guidance",
   assert.match(recheck, /Confirm each finding is fixed/);
 });
 
+void test("the assignment shortens a long goal and keeps a short one", () => {
+  const base = {
+    symphonyId: fixtureSymphonyId,
+    attemptId: "attempt-1",
+    taskId: "api",
+    title: "Inspect the API",
+    outcome: "Map the public endpoints",
+    reads: ["src/api"],
+    writes: [],
+    checks: [],
+    prerequisites: [],
+  };
+  const max = SYMPHONY_LIMITS.assignmentGoalChars;
+  const exact = assignmentPrompt({ ...base, goal: "g".repeat(max) });
+  assert.match(exact, new RegExp(`Goal: g{${max}}\\n`));
+  const long = assignmentPrompt({ ...base, goal: `${"g".repeat(max)}tail` });
+  assert.doesNotMatch(long, /tail/);
+  assert.match(long, /… \(shortened; your assignment is authoritative\)/);
+  assert.match(long, /Assignment: Map the public endpoints/);
+});
+
 void test("prompts shorten findings only to fit the saved prompt limit", () => {
   const long = (id: string): TaskFinding => ({
     id,

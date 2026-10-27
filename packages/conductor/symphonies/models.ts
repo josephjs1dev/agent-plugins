@@ -38,6 +38,8 @@ export const SYMPHONY_LIMITS = {
   findingsPerReport: 24,
   /** Characters a saved agent prompt or wake may hold. */
   promptChars: 128_000,
+  /** Goal characters repeated in each task assignment. */
+  assignmentGoalChars: 4_000,
 } as const;
 export const uuidSchema = z.string().uuid();
 export const taskIdSchema = z

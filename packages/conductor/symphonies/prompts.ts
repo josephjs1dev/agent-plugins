@@ -15,6 +15,17 @@ function clamp(value: string, max: number): string {
 const paths = (value: readonly string[], empty: string): string =>
   value.length ? value.join(", ") : empty;
 
+/**
+ * The symphony goal as one task sees it. Every task repeats it, and each task
+ * description is a standalone contract, so a long goal is shortened.
+ */
+function assignmentGoal(goal: string): string {
+  const max = SYMPHONY_LIMITS.assignmentGoalChars;
+  return goal.length > max
+    ? `${goal.slice(0, max)}… (shortened; your assignment is authoritative)`
+    : goal;
+}
+
 /** One prerequisite task's bounded result, rendered as an assignment line. */
 export interface PrerequisiteResult {
   taskId: string;
@@ -296,7 +307,7 @@ function renderAssignment(
     `You are a task agent in Conductor symphony ${input.symphonyId}, attempt ${input.attemptId}.`,
     "",
     `Task ${input.taskId}: ${input.title}`,
-    `Goal: ${input.goal}`,
+    `Goal: ${assignmentGoal(input.goal)}`,
     `Assignment: ${input.outcome}`,
     `Reads: ${paths(input.reads, "none")}`,
     `Writes: ${paths(input.writes, "none (read-only)")}`,
@@ -316,8 +327,9 @@ function renderAssignment(
   lines.push(...shortenedLines(detail));
   lines.push(
     "",
-    "Other agents share this checkout. Edit only your write paths. Do not commit,",
-    "push, reload plugins, start agents, or go beyond this assignment.",
+    "Other agents share this checkout and may edit other paths at the same time.",
+    "Edit only your write paths. Do not commit, push, reload plugins, start",
+    "agents, or go beyond this assignment.",
     "",
     "If the sandbox blocks a command this task needs (for example `Operation not",
     "permitted`, a blocked network call, or a process killed by a signal), rerun",
@@ -330,8 +342,8 @@ function renderAssignment(
     "When the work is done, run the required checks. If one fails because of your",
     "change, fix it and run it again, up to 3 rounds. Stop early if the same error",
     "repeats or if you need user input, more write paths, or a different model.",
-    "Report problems that already existed and aren't caused by your change; don't",
-    "fix them.",
+    "Report problems that already existed or come from another agent's paths and",
+    "aren't caused by your change; don't fix them.",
     "",
     "Then call the Conductor `report` tool:",
     "- completed: the work is done and every required check passed. A review also",

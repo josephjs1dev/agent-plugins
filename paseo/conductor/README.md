@@ -96,10 +96,11 @@ Conductor reads only the given session's log; it does not scan unrelated
 session contents. Harness-specific reader code lives in `packages/conductor/harnesses/`
 behind one harness-neutral interface.
 
-Up to four read-only task agents can run concurrently (three by default). Task agents share
-the current checkout; writers are serialized, including against existing recorded
-Symphonies. Scope declarations guide task assignment and prompts; they are not filesystem
-sandboxes. Profiles preserve configured settings without silently granting broader
+Up to four task agents can run concurrently (three by default). Task agents share
+the current checkout. Two tasks wait for each other only when one task's writes overlap the
+other's reads or writes, or when they share a resource, including against existing recorded
+Symphonies. Writers with disjoint scopes run in parallel. Scope declarations guide task
+assignment and prompts; they are not filesystem sandboxes. Profiles preserve configured settings without silently granting broader
 permissions. Small edits need no symphony unless requested.
 
 A report alone does not release an orchestrated task agent's resources. Dependencies
@@ -172,7 +173,7 @@ By default the requesting agent becomes the symphony's Conductor agent. The
 acknowledgement includes `instructions` for defining, dispatching, and finishing
 the symphony from the same conversation; no separate Conductor agent is created. While task
 agents work, the Conductor should not edit the checkout itself, because
-Conductor only serializes writes between task agents. Notifications to a busy
+Conductor only orders overlapping scopes between task agents. Notifications to a busy
 Conductor wait until its turn ends.
 
 Set `"conductor":"agent"` to create a dedicated Conductor agent instead. Optional
@@ -309,7 +310,7 @@ profile/model, selection reason and any override or warning.
 
 `review: true` marks a read-only review task. A review task starts once each prerequisite is completed
 or needs changes and receives their open findings and failed checks; other tasks
-wait for completed prerequisites. Assignments carry the goal,
+wait for completed prerequisites. Assignments carry the goal (shortened to 4000 characters),
 prerequisite reports, declared scopes/checks, and exact symphony/attempt identity.
 Task agents call `report` or `block` for their existing assignment, then stop. They do
 not create another symphony or claim the Conductor's task. The scheduler observes
@@ -783,4 +784,4 @@ only when no remaining symphony references it; shared context is retained. Offli
 maintenance must still preserve unresolved claims.
 Symphonies dispatch real children and observe settlement through the host.
 Task agents run their own checks and submit evidence. Cancellation of a symphony, isolated
-worktrees, parallel writers, and recurring schedules are not part of this release.
+worktrees, and recurring schedules are not part of this release.

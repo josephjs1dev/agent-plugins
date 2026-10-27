@@ -486,12 +486,23 @@ void test("Conductor agent creates distinct children and joins explicit reports 
   assert.equal((await f.read(planning.id)).status, "completed");
 });
 
-void test("writers stay serialized across report and reload until their task agent stops", async () => {
+void test("disjoint writers launch together", async () => {
   const f = await fixture();
   const plan = await f.start();
   const symphony = await f.define(plan, [
     task("a", [], ["a"]),
     task("b", [], ["b"]),
+  ]);
+  assert.ok(latestAttempt(symphony, "a"));
+  assert.ok(latestAttempt(symphony, "b"));
+});
+
+void test("overlapping writers stay serialized across report and reload until their task agent stops", async () => {
+  const f = await fixture();
+  const plan = await f.start();
+  const symphony = await f.define(plan, [
+    task("a", [], ["a"]),
+    task("b", [], ["a/b"]),
   ]);
   assert.equal(symphony.execution.attempts.length, 1);
   const a = await f.report(plan.id, "a");
@@ -1496,12 +1507,12 @@ void test("a retry of a failed uncertain launch replays the same identity and co
   );
 });
 
-void test("a failed continuation waits while another writer holds resources", async () => {
+void test("a failed continuation waits while an overlapping writer holds resources", async () => {
   const f = await fixture();
   const plan = await f.start();
   const symphony = await f.define(plan, [
     task("a", [], ["src/a"]),
-    task("b", [], ["src/b"]),
+    task("b", [], ["src"]),
   ]);
   const a = latestAttempt(symphony, "a");
   assert.ok(a && plan.source.agentId);
@@ -1571,7 +1582,7 @@ void test("dispatch addWrites validates the grown scope before it is stored", as
   );
 });
 
-void test("dispatch addWrites promotes a blocked reader but refuses while a writer holds", async () => {
+void test("dispatch addWrites promotes a blocked reader but refuses while a writer holds the path", async () => {
   const f = await fixture();
   const plan = await f.start();
   const symphony = await f.define(plan, [
@@ -1585,7 +1596,7 @@ void test("dispatch addWrites promotes a blocked reader but refuses while a writ
       checks: [],
       profile: "Small",
     },
-    task("writer", [], ["src/b"]),
+    task("writer", [], ["shared/helper.ts"]),
   ]);
   const reader = latestAttempt(symphony, "reader");
   const writer = latestAttempt(symphony, "writer");
@@ -1610,7 +1621,7 @@ void test("dispatch addWrites promotes a blocked reader but refuses while a writ
       retryTaskId: "reader",
       addWrites: ["shared/helper.ts"],
     }),
-    /another writer holds resources/,
+    /overlaps task "writer".*overlapping read\/write scope/,
   );
   // With the writer done, the promotion is safe and records the addition on the
   // resumed attempt without changing the plan.

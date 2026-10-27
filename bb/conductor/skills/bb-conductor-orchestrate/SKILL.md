@@ -9,16 +9,12 @@ This session is the Conductor. You plan, dispatch, review and finish. Task agent
 
 ## Terms
 
-| Term         | Meaning                                                                                                                                                                                                                                                                                                                                                          |
-| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Symphony     | One task orchestration: this Conductor session plus its task agents, as shown on bb's Conductor page.                                                                                                                                                                                                                                                            |
-| `symphonyId` | The symphony ID: a UUID that `orchestrate` returns.                                                                                                                                                                                                                                                                                                              |
-| Task         | One bounded assignment for one task agent.                                                                                                                                                                                                                                                                                                                       |
-| Attempt      | One task agent's try at a task. A retry of a failed task or a reopened task creates a new attempt.                                                                                                                                                                                                                                                               |
-| Loop         | One pass over the score, numbered from 1. A loop ends when nothing runs and nothing more can start. It _succeeded_ when every task's latest attempt is `completed`; otherwise it _needs changes_. Fixes run in the next loop of the same symphony.                                                                                                               |
-| Outcome      | A report's result. `completed`: done, every check passed, no blocking findings. `needs-changes`: the work ran, but checks still fail or a review found blocking findings; the next loop resolves it. `failed`: the harness could not run the work (launch, unreachable agent, permissions, sandbox, refused scope, unavailable model); retried in the same loop. |
-| Finding      | A defect in a report: `{id, severity: blocking or minor, taskId, paths, summary, suggestedFix}`. `loop`, `deferred` and `unresolved` name it as `<reporter task>#<id>`, such as `review#F1`.                                                                                                                                                                     |
-| Task agent   | A child agent that the Conductor creates for a task. Commands and profiles call this role `worker`.                                                                                                                                                                                                                                                              |
+- **Symphony**: one task orchestration: this Conductor session plus its task agents, as shown on bb's Conductor page. `symphonyId` is the UUID that `orchestrate` returns.
+- **Task**: one bounded assignment for one task agent. **Attempt**: one task agent's try at a task. A retry or a reopen creates a new attempt.
+- **Loop**: one pass over the score, numbered from 1. A loop ends when nothing runs and nothing more can start. It _succeeded_ when every task's latest attempt is `completed`; otherwise it _needs changes_. Fixes run in the next loop of the same symphony.
+- **Outcome**: `completed`: done, every check passed, no blocking findings. `needs-changes`: the work ran, but checks still fail or a review found blocking findings; the next loop resolves it. `failed`: the harness could not run the work (launch, unreachable agent, permissions, sandbox, refused scope, unavailable model); retried in the same loop.
+- **Finding**: a defect in a report: `{id, severity: blocking or minor, taskId, paths, summary, suggestedFix}`. `loop`, `deferred` and `unresolved` name it as `<reporter task>#<id>`, such as `review#F1`.
+- **Task agent**: a child agent that the Conductor creates for a task. Commands and profiles call this role `worker`.
 
 ## Use the Conductor tools
 
@@ -49,7 +45,7 @@ Every successful call returns an acknowledgement. An error result is a failure. 
 
 - `key`: a stable request key, such as `task-priority`. Reuse the same key after an empty or uncertain response. A repeated key returns the same symphony, not a second one.
 - `title`: 160 characters or fewer.
-- `goal`: 16000 characters or fewer. Include the plan, the constraints and the acceptance criteria.
+- `goal`: 16000 characters or fewer. Include the plan, the constraints and the acceptance criteria. Each task agent sees only the first 4000 characters, so put the shared constraints first.
 - `concurrency`: optional, 1–4, default 3.
 - `maxLoops`: optional loop budget, 1–5, default 3. Past it, `loop` needs the user's approval.
 - Do not set `conductor` or `conductorProfile`.
@@ -58,7 +54,7 @@ Keep the returned `symphonyId`. Read the returned `instructions`. If they differ
 
 ### 3. List profiles and models
 
-Call `profiles` and `models` before you split the goal. Neither takes arguments.
+Call `profiles` and `models` once, before you split the goal. Neither takes arguments.
 
 - `profiles` returns Conductor-owned profile identity, notes, provider/model/permission fields, routing classification, `hasInstructions`, one catalog revision and diagnostics. It does not return instruction text. A profile is classified only when it has at least one role and a size; never guess a size from a model name.
 - Create and edit profiles on bb's Conductor page, under Profiles. It writes the shared store that Paseo's Podium also edits. Profiles use Paseo's provider and mode IDs, such as `claude` and `auto-review`; bb translates them. Add skill names the task agent should use to the profile's instructions; Conductor does not discover skills.
@@ -71,7 +67,7 @@ Call `profiles` and `models` before you split the goal. Neither takes arguments.
 Size first:
 
 1. Do not split one coherent change, a single-file change, or work that depends heavily on shared context. Define one task, or do a small edit yourself.
-2. Scale the task count to the work. A fact lookup is 1 task. A comparison or a change across two layers is 2–4 tasks. Broad independent work is 5–8 tasks. The maximum is 12.
+2. Scale the task count to the work. A fact lookup is 1 task. A comparison or a change across two layers is 2–4 tasks. Broad independent work is 5–8 tasks. The maximum is 12. Each task is a new agent that reads its files from scratch, so a split pays only when the parts can run at the same time.
 
 Then build the score:
 
@@ -79,7 +75,7 @@ Then build the score:
 2. Put shared contracts, such as schemas, types and RPC shapes, in one early task. The other tasks depend on it.
 3. Give each writable path to one task. Tasks that run at the same time must not write the same path.
 4. Always set `writes`. Use `[]` for research and review. An omitted `writes` defaults to `["."]`, and that task then runs alone.
-5. Put exclusive non-file items in `resources`, such as a lockfile install, a port, a database or a plugin reload.
+5. Put exclusive non-file items in `resources`, such as a lockfile install, a port, a database, a plugin reload or a shared check target.
 6. Add `dependsOn` only for a real data flow or write order.
 7. Add a planning task only to resolve a named open design decision. Writer count or a shared contract alone never calls for a planning task. Executing an approved design is implementation.
 8. End a writing score with a read-only review task: set `review: true`, `writes: []`, and its `reads` to the writers' `writes`. A review task starts once each prerequisite is `completed` or `needs-changes`, and receives their open findings and failed checks, so one loop collects every defect. Other tasks wait for `completed` prerequisites.
@@ -88,7 +84,7 @@ Then build the score:
 Fields:
 
 - `id`: letters, digits, `_` and `-`. It starts with a letter or digit, has 64 characters or fewer, and is unique.
-- `description`: 4000 characters or fewer. A task agent sees only the goal, its own task and the reports of its prerequisites. It does not see this conversation. Write each description as a standalone contract, in the format below.
+- `description`: 4000 characters or fewer. A task agent sees only a shortened goal, its own task and the reports of its prerequisites. It does not see this conversation. Write each description as a standalone contract, in the format below.
 - `dependsOn`: the task IDs that must complete first. Do not create cycles. Each dependent task agent receives its prerequisites' reports.
 - `reads` and `writes`: real checkout-relative paths, such as `server` or `client/symphonies/task-card.tsx`. Do not use `..`, wildcards or symbolic links. `writes: []` makes a read-only task.
 - `resources`: names for exclusive non-file items, such as `npm-install` or `port-8080`. Names use the `id` format. Tasks that share a resource run one at a time.
@@ -111,8 +107,9 @@ Report: the evidence to return. Put the most important result first, because dep
 
 Scheduling:
 
-- Read-only tasks run at the same time.
-- Writers in the same checkout run one at a time. Keep write scopes narrow.
+- Up to `concurrency` tasks run at the same time. Two tasks wait for each other only when one task's `writes` overlap the other's `reads` or `writes`, or when they share a `resources` name. Writers with disjoint `writes` run in parallel.
+- Keep `reads` and `writes` narrow. A task with `reads: ["."]` waits for every writer.
+- A writer's checks can see another writer's partial edits. When writers share a check target, such as `npm run check` in one package, give them one shared `resources` name, or give each a check scoped to its own files and leave the full check to the integration or review task.
 
 ### 5. Choose a task agent for each task
 
@@ -122,13 +119,6 @@ Split first, then route. Do not create tasks to match profiles.
 2. Otherwise run `route` with the task role. Match subject matter from each profile's “When to use” notes. Pick the smallest eligible profile for the role (small, then medium, then large); ties follow store order, then profile ID. Do this even when the deliverable is prose or Markdown. Use `implementation` to execute an approved design; use `planning` only for open design decisions. Prefer a reviewer on a different provider/model from the implementer.
 3. Give each task focused context and a short visible selection reason in `routing: {"reason":"..."}`; an automatic route supplies its own concise reason. Automatic routing ignores “When to use” notes: it takes the smallest size, then store order. Omit worker fields only when exactly one eligible profile has the smallest size for the role. When two or more share the smallest size, name one with `profile`, chosen by its “When to use” notes, and give the reason. If none is eligible, choose an explicit profile, an inline `provider`/`model` (optional `thinkingOptionId`), or `profile: "inherit"` with a reason. Inherit is explicit opt-in; never silently inherit the Conductor's model.
 4. Escalate past the eligible smaller-first choice only for an explicit user choice, a concrete capability gap, an observed model limitation after bounded corrective attempts, or no eligible configured profile. Add `routing.override: {"category":"user-choice|capability-gap|observed-limitation|no-eligible-profile","evidence":"specific evidence"}`. When no profile is eligible, choose an explicit profile, inline worker, or `profile: "inherit"` with a reason; strict mode also requires a valid `no-eligible-profile` override. “Needs quality” is not evidence. Diagnose missing input, permissions and sandbox issues before treating failure as a model limitation.
-
-| Role           | Routing                                                                                                     |
-| -------------- | ----------------------------------------------------------------------------------------------------------- |
-| Implementation | Smallest eligible implementation profile whose “When to use” notes fit the subject, including writing work. |
-| Exploration    | Smallest eligible exploration profile whose “When to use” notes fit the subject.                            |
-| Planning       | Use only while design decisions remain open.                                                                |
-| Review         | Prefer a different provider/model than the implementer, while matching role and subject in the notes.       |
 
 Profiles are owned by Conductor and edited on the Conductor page, under Profiles. Set the routing mode there with the **Enforce routing** switch: off is `warn` (the default), and on is `strict`. Each profile has routing fields (`roles` and `size`: `small`, `medium` or `large`), “When to use” notes, and free-text instructions. The notes guide subject-matter matching. A profile without roles or size is unclassified and shows a warning in its Profiles card; routing cannot select it. Instructions are delivered to the task agent in a clearly marked section; they cannot override user instructions, repository rules, write scope, or the permission ceiling. Put skill names the agent should use in these instructions. The Conductor filters by classification, role, provider availability and permission ceiling, then prefers the smallest eligible size. `warn` is the default: a larger-than-eligible, ineligible, unclassified or inline choice is accepted with a warning in the acknowledgement and attempt. `strict` requires a valid override category and specific evidence. Unknown/stale profile IDs appear in diagnostics.
 
@@ -180,7 +170,7 @@ Permissions: a task agent runs in this session's permission mode. It never gets 
 ```
 
 - Dispatch creates the task agents and follows the dependencies.
-- End your turn after dispatch. Task agent reports arrive as messages in this conversation.
+- End your turn after dispatch. Conductor wakes this conversation when a task needs attention or a loop ends.
 - Do not edit this checkout while task agents run. Route changes through tasks.
 - Do not poll in a loop. Call `get` with `{"symphonyId":"<symphonyId>"}` only when you need the current state.
 
@@ -191,15 +181,8 @@ This step covers only `failed` (a harness problem) and `blocked` tasks. A `needs
 - Act on the per-task notification summary first. Call `get` or open a task agent's conversation only when the summary does not explain the failure. Task agents diagnose and fix their own changes for up to 3 rounds; do not fix the cause yourself.
 - Choose the retry action from `diagnosis.need`. For `scope`, dispatch with `retryTaskId` and `addWrites` set to `requestedWrites`, or ask the user if those paths exceed the goal. For `input`, ask the user, then include the answer in `note`. For `model`, choose a different `profile` or `provider`/`model`/`thinkingOptionId`. For `harness` (or the older `none`), include a specific direction in `note`.
 - A failed task gets at most 2 retries per loop (3 attempts), counted only from `failed` attempts in that loop. Blocker resumes and nudges do not count, and failed retries never use the loop budget. A task agent that stops without reporting after the nudge, becomes unreachable, or whose launch stays unconfirmed is `failed` with `need: "harness"`; retrying an unconfirmed launch replays the same agent identity and counts. At the limit, `dispatch` refuses the retry; ask the user how to proceed.
-- Retry on the same worker choice first. A harness failure does not justify switching models: diagnose missing input, permissions and sandbox first. Escalate only for a concrete capability gap or observed model limitation, with a specific routing override. Never
-  switch to a profile whose `modeId` is broader than this session's. If every
-  available choice has failed, ask the user.
-  Otherwise dispatch with `retryTaskId`; include `note` when giving guidance.
-  An unchanged worker choice continues on the same agent when it still exists
-  and is inactive; otherwise Conductor creates a new agent. A blocked task
-  resumes on its task agent when the worker choice is unchanged and it can
-  receive a message; a changed worker choice starts a new agent. Do not replace
-  an active task agent.
+- Retry on the same worker choice first. A harness failure does not justify switching models: diagnose missing input, permissions and sandbox first. Escalate only for a concrete capability gap or observed model limitation, with a specific routing override. Never switch to a profile whose `modeId` is broader than this session's. If every available choice has failed, ask the user. Otherwise dispatch with `retryTaskId`; include `note` when giving guidance.
+- An unchanged worker choice continues on the same agent when it still exists and is inactive; otherwise Conductor creates a new agent. A blocked task resumes on its task agent when the worker choice is unchanged and it can receive a message; a changed worker choice starts a new agent. Do not replace an active task agent.
 - Task agents can request extra write paths with `widen`. A refusal leaves scope unchanged; use `need: "scope"` and `requestedWrites` so you can retry with `addWrites` or ask the user.
 
 ### 8b. Loops
@@ -262,38 +245,16 @@ A loop ends when nothing runs and nothing more can start. Its wake states the ve
 
 ## Troubleshooting
 
-| Message                                                                                                                                | Cause                                                                                   | Action                                                                                                                                                         |
-| -------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| No Conductor tools                                                                                                                     | The Conductor plugin is disabled, or this thread started before it loaded.              | Tell the user to enable the Conductor plugin and start a new thread.                                                                                           |
-| `Command acknowledgement is uncertain.`                                                                                                | The daemon did not confirm the command in time.                                         | Call `get` to inspect, then retry with the same `key` or attempt.                                                                                              |
-| `Invalid command fields. Check the tool's input schema.`                                                                               | The arguments do not match the tool schema.                                             | Fix the arguments.                                                                                                                                             |
-| `Only this symphony's Conductor agent can define or dispatch its tasks.`                                                               | The `symphonyId` belongs to another agent.                                              | Use the `symphonyId` from your own `orchestrate`.                                                                                                              |
-| `This symphony is not ready to dispatch.`                                                                                              | `define` did not run, or the symphony finished.                                         | Call `define` first.                                                                                                                                           |
-| `Unknown worker profile: <name>`                                                                                                       | No configured profile has that id or name.                                              | Call `profiles`, or use an inline choice.                                                                                                                      |
-| `Ambiguous worker profile: <name>`                                                                                                     | Two profiles share the name.                                                            | Use the profile `id`.                                                                                                                                          |
-| `Task agent model is unavailable: <provider>/<model>`                                                                                  | `models` does not list that model.                                                      | Call `models` and choose a listed ID.                                                                                                                          |
-| `Worker profile requests elevated permission mode: <mode>`                                                                             | The profile asks for more access than this session has.                                 | Choose another profile, or an inline choice.                                                                                                                   |
-| `Task "<id>" routing: ... Add routing.override {category, evidence} or choose an eligible profile.`                                    | Strict routing rejected a larger, ineligible, unclassified, inline or inherited choice. | Call `route`; choose the first eligible profile or provide a valid override category and specific evidence.                                                    |
-| `Task "<id>" needs routing.reason for its worker choice.`                                                                              | A task or reopen worker choice has no visible selection reason.                         | Add `routing: {"reason":"..."}`; reopen overrides require it.                                                                                                  |
-| `Task "<id>" override evidence is generic; name the concrete capability gap, observed failure or user statement.`                      | Override evidence is vague or only says quality/complexity.                             | State the specific user choice, capability gap or observed limitation.                                                                                         |
-| `Task "<id>" has no eligible configured profile. Set an explicit profile, provider/model, or profile "inherit" with routing.reason.`   | No eligible profile exists for automatic routing.                                       | Choose an available worker explicitly, or use `profile: "inherit"` with a reason; strict mode also requires a specific `no-eligible-profile` override.         |
-| `Profile catalog changed since define (...); routing was revalidated.`                                                                 | Routing fields changed after definition; dispatch revalidated the choices.              | Review `profiles` and `route`; reopen with a validated worker override if needed.                                                                              |
-| `Conductor profiles are invalid: ... Fix them in Podium › Profiles.`                                                                   | The profile store is unreadable or invalid.                                             | Open the Conductor page, under Profiles, correct the reported profile data, and retry.                                                                         |
-| `Conductor could not load or save the worker profiles. Refresh and check conductor storage.`                                           | Conductor could not read or persist the store.                                          | Refresh the Conductor page and check Conductor storage.                                                                                                        |
-| ``Retry requires a settled failed or blocked task agent; a needs-changes task is resolved with `loop`, not a retry.``                  | The task reported `needs-changes`, or its agent has not settled.                        | Wait for the loop to end, then reopen the task with `loop` (step 8b).                                                                                          |
-| `Retry refused: task "<id>" already used its 2 failed retries in loop <N>. Ask the user how to proceed.`                               | The task reached the failed-retry limit for this loop.                                  | Ask the user. Do not start a new symphony.                                                                                                                     |
-| `A loop starts only after the current loop ends needing changes with no failed, blocked or running tasks.`                             | Tasks still run or can start, a task is `failed` or `blocked`, or the loop succeeded.   | Wait for the loop-end wake, resolve failed and blocked tasks with step 8, or finish a succeeded loop.                                                          |
-| `Loop must reopen or defer every open item: ...`                                                                                       | A blocking finding or `needs-changes` task is in neither `reopen` nor `deferred`.       | Reopen each owning task, or defer the listed items with a reason.                                                                                              |
-| `Loop <N> exceeds the loop budget (<max>). Ask the user, then resend with approval {loops, userAnswer}.`                               | The next loop is past `maxLoops`.                                                       | Ask the user. Resend with `approval` only with the user's answer, or finish with `unresolved`.                                                                 |
-| `Unknown finding "<ref>" for task "<id>".`                                                                                             | `findings` names a finding the previous loop did not report.                            | Use `<reporter task>#<finding id>` from the wake or `get`.                                                                                                     |
-| ``Finish requires a completed report for every task and settled task agents, or an `unresolved` list covering everything still open.`` | A task's latest attempt is not `completed`, or an agent has not settled.                | Start the next loop, or ask the user and finish with `unresolved`.                                                                                             |
-| `Finish with unresolved must cover every open finding and non-completed task: ...`                                                     | `unresolved` misses an open item.                                                       | Add each listed finding or task with a reason.                                                                                                                 |
-| `Task scope leaves the selected checkout.`                                                                                             | A `reads` or `writes` path is outside the checkout.                                     | Use checkout-relative paths.                                                                                                                                   |
-| A blocked retry with a new worker choice succeeds                                                                                      | The changed choice starts a new agent on the attempt.                                   | Check the dispatch acknowledgement for the new agent ID.                                                                                                       |
-| `Widen refused: this attempt has used its 2 widen calls.`                                                                              | The attempt reached its widen-call limit.                                               | Report `need: "scope"` and `requestedWrites`; retry with `addWrites` or ask the user.                                                                          |
-| `Widen refused: an attempt may hold at most 10 granted paths.`                                                                         | The request exceeds the attempt's total grant limit.                                    | Report `need: "scope"` and request the necessary paths through `addWrites` or ask the user.                                                                    |
-| `Widen refused: ...` naming another task or reader                                                                                     | The requested paths overlap an unfinished task's writes or a resource-holding attempt.  | Do not edit those paths. Report `need: "scope"` with `requestedWrites`; the Conductor can retry after the conflict clears or use `addWrites` when appropriate. |
-| `Only the assigned task agent can widen its attempt's write scope.` / `Only a running attempt can widen its write scope.`              | The caller is not the assigned task agent, or the attempt is no longer running.         | Call `widen` from the assigned task agent while its attempt is running; otherwise report the scope need to the Conductor.                                      |
+Most error messages name their fix; follow the message. These need more context:
+
+- No Conductor tools: the Conductor plugin is disabled, or this thread started before it loaded. Tell the user to enable the Conductor plugin and start a new thread.
+- `Command acknowledgement is uncertain.`: call `get` to inspect, then retry with the same `key` or attempt.
+- `Conductor profiles are invalid: ...` or `Conductor could not load or save the worker profiles.`: correct the profile data on the Conductor page, under Profiles, or refresh that page, then retry.
+- `Profile catalog changed since define (...); routing was revalidated.`: review `profiles` and `route`; reopen with a validated worker override if needed.
+- `Task "<id>" override evidence is generic; ...`: state the specific user choice, capability gap or observed limitation.
+- `Retry requires a settled failed or blocked task agent; ...`: the task reported `needs-changes`. Wait for the loop to end, then reopen it with `loop` (step 8b).
+- `Loop must reopen or defer every open item: ...` or `Loop <N> exceeds the loop budget (<max>). ...`: follow step 8b.
+- `Widen refused: ...`: do not edit those paths. The task agent reports `need: "scope"` with `requestedWrites`; retry with `addWrites` after the conflict clears, or ask the user.
 
 ## Rules
 
