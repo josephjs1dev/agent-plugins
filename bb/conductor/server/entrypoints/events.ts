@@ -2,16 +2,23 @@ import type { BbPluginApi } from "@get-bb/plugin-sdk";
 import type { AgentIds } from "../engine/bb/agent-ids";
 import type { SymphonyService } from "./symphonies";
 
-/** Marks unreported work when a source thread's turn ends or the thread leaves. */
+/**
+ * Marks unreported work when a source thread's turn ends or the thread leaves,
+ * then observes the stopped thread now instead of on the next reconcile tick.
+ */
 export function observeThreads(
   bb: Pick<BbPluginApi, "events">,
-  service: Pick<SymphonyService, "execution">,
+  service: Pick<SymphonyService, "execution" | "reconcile">,
   ids: AgentIds,
   ready: Promise<void>,
 ): void {
   const interrupt = async (threadId: string, message: string) => {
     await ready;
-    await service.execution.interrupt(await ids.agentOf(threadId), message);
+    try {
+      await service.execution.interrupt(await ids.agentOf(threadId), message);
+    } finally {
+      void service.reconcile();
+    }
   };
   bb.events.on("thread.idle", ({ thread }) =>
     interrupt(

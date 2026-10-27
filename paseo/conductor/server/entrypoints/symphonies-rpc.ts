@@ -51,6 +51,7 @@ export function registerSymphonies(
     connection.remember,
     service.interrupt,
     ready,
+    () => void service.reconcile(),
   );
   server.handle(getSymphonyAccess, async (_input, { paseo }) => {
     connection.remember(paseo);

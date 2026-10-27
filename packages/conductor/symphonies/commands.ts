@@ -127,6 +127,8 @@ export const symphonyCommandSchema = z.discriminatedUnion("kind", [
         .min(1)
         .max(SYMPHONY_LIMITS.maxLoops)
         .optional(),
+      // Absent means on; false makes every loop wait for the Conductor.
+      autoLoop: z.boolean().optional(),
       conductor: z.enum(["self", "agent"]).optional(),
       conductorProfile: text(160).optional(),
     })

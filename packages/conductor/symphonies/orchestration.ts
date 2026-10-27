@@ -13,6 +13,7 @@ import { commandTaskDefinition, symphonyConductor } from "./conductor";
 import { randomUUID } from "node:crypto";
 import {
   attemptLoop,
+  conflictReason,
   currentLoop,
   currentLoopRecord,
   effectiveTask,
@@ -23,7 +24,6 @@ import {
   pendingLoopEntry,
   prerequisiteCycle,
   prerequisiteReady,
-  scopeConflictReason,
   scoreIssues,
   transitiveDependents,
   type LoopScheduleEntry,
@@ -46,6 +46,7 @@ import {
   type TaskReport,
 } from "./models";
 import {
+  symphonyCommandSchema,
   workerChoice,
   type SymphonyCommand,
   type WorkerChoice,
@@ -209,16 +210,8 @@ function repeatsPreviousLoop(
   );
 }
 
-/** The per-loop wake text that states the verdict and the next step. */
-function loopEndMessage(
-  symphony: StoredSymphony,
-  verdict: ReturnType<typeof loopVerdict>,
-): string {
-  if (verdict.verdict === "succeeded") {
-    return `Loop ${verdict.loop} succeeded. Review the evidence, then finish the symphony with a summary.`;
-  }
-  const maxLoops =
-    symphony.execution.conducting?.maxLoops ?? SYMPHONY_LIMITS.defaultLoops;
+/** The open blocking findings and failed checks of a loop, as one phrase. */
+function loopDetail(verdict: ReturnType<typeof loopVerdict>): string {
   const parts: string[] = [];
   const findings = verdict.findings.map(
     (entry) =>
@@ -237,14 +230,114 @@ function loopEndMessage(
       `${checks.length} failed check${checks.length === 1 ? "" : "s"} [${checks.join(", ")}]`,
     );
   }
-  const detail = parts.length ? parts.join(" and ") : "no blocking findings";
+  return parts.length ? parts.join(" and ") : "no blocking findings";
+}
+
+/** Names the loops the scheduler started, which the Conductor did not see. */
+function autoLoopNote(symphony: StoredSymphony): string {
+  const auto = (symphony.execution.conducting?.loops ?? [])
+    .filter((entry) => entry.auto)
+    .map((entry) => entry.number);
+  return auto.length
+    ? ` Loop${auto.length === 1 ? "" : "s"} ${auto.join(", ")} started automatically from the previous findings; \`get\` shows each loop record.`
+    : "";
+}
+
+/** The per-loop wake text that states the verdict and the next step. */
+function loopEndMessage(
+  symphony: StoredSymphony,
+  verdict: ReturnType<typeof loopVerdict>,
+  autoError?: string,
+): string {
+  const note = autoLoopNote(symphony);
+  if (verdict.verdict === "succeeded") {
+    return `Loop ${verdict.loop} succeeded.${note} Review the evidence, then finish the symphony with a summary.`;
+  }
+  const maxLoops =
+    symphony.execution.conducting?.maxLoops ?? SYMPHONY_LIMITS.defaultLoops;
+  const detail = `${loopDetail(verdict)}.${note}${
+    autoError ? ` Auto-loop could not start: ${clamp(autoError, 500)}` : ""
+  }`;
   if (verdict.loop >= maxLoops) {
-    return `Loop ${verdict.loop} needs changes: ${detail}. The loop budget (${maxLoops}) is used. Ask the user whether to continue (\`loop\` with \`approval\`) or finish with \`unresolved\`.`;
+    return `Loop ${verdict.loop} needs changes: ${detail} The loop budget (${maxLoops}) is used. Ask the user whether to continue (\`loop\` with \`approval\`) or finish with \`unresolved\`.`;
   }
   if (repeatsPreviousLoop(symphony, verdict)) {
-    return `Loop ${verdict.loop} needs changes: ${detail}. The blocking findings repeat the previous loop; ask the user before the budget runs out.`;
+    return `Loop ${verdict.loop} needs changes: ${detail} The blocking findings repeat the previous loop; ask the user before the budget runs out.`;
   }
-  return `Loop ${verdict.loop} needs changes: ${detail}. Start loop ${verdict.loop + 1} with \`loop\`, reopening the owning tasks.`;
+  return `Loop ${verdict.loop} needs changes: ${detail} Start loop ${verdict.loop + 1} with \`loop\`, reopening the owning tasks.`;
+}
+
+/**
+ * The `loop` command the scheduler sends itself when a loop ended needing
+ * changes in a routine way, or null when the Conductor must decide: auto-loop
+ * is off, the budget is used, the findings repeat, or an item was deferred. It
+ * reopens the owner of every open blocking finding and every other
+ * needs-changes task; reviews re-run as their dependents.
+ */
+function autoLoopCommand(
+  symphony: StoredSymphony,
+  verdict: ReturnType<typeof loopVerdict>,
+): Extract<SymphonyCommand, { kind: "loop" }> | null {
+  const meta = symphony.execution.conducting;
+  const score = symphony.revisions.at(-1)?.score;
+  if (
+    !meta?.autoLoop ||
+    !score ||
+    !verdict.ended ||
+    verdict.verdict !== "needs-changes" ||
+    verdict.loop >= (meta.maxLoops ?? SYMPHONY_LIMITS.defaultLoops) ||
+    repeatsPreviousLoop(symphony, verdict)
+  ) {
+    return null;
+  }
+  // A deferral was the Conductor's decision, and so is repeating it.
+  const record = meta.loops?.find((entry) => entry.number === verdict.loop);
+  if (
+    record?.deferred.length ||
+    verdict.findings.some((entry) => entry.loop !== verdict.loop)
+  ) {
+    return null;
+  }
+  const ids = new Set(score.tasks.map((task) => task.id));
+  const reopen = new Map<string, string[]>();
+  for (const { reporterTaskId, finding } of verdict.findings) {
+    const owner = finding.taskId ?? reporterTaskId;
+    if (!ids.has(owner)) {
+      return null;
+    }
+    reopen.set(owner, [
+      ...(reopen.get(owner) ?? []),
+      `${reporterTaskId}#${finding.id}`,
+    ]);
+  }
+  const needsChanges = score.tasks.filter(
+    (task) => latestAttempt(symphony, task.id)?.state === "needs-changes",
+  );
+  for (const task of needsChanges) {
+    if (!isReviewTask(task) && !reopen.has(task.id)) {
+      reopen.set(task.id, []);
+    }
+  }
+  // A needs-changes review re-runs only after a reopened prerequisite.
+  const dependents = new Set(transitiveDependents(score, [...reopen.keys()]));
+  if (
+    !reopen.size ||
+    needsChanges.some(
+      (task) =>
+        isReviewTask(task) && !reopen.has(task.id) && !dependents.has(task.id),
+    )
+  ) {
+    return null;
+  }
+  const command = symphonyCommandSchema.parse({
+    kind: "loop",
+    symphonyId: symphony.id,
+    reason: clamp(`Fix ${loopDetail(verdict)}`, 2000),
+    reopen: [...reopen].map(([taskId, findings]) =>
+      findings.length ? { taskId, findings } : { taskId },
+    ),
+  });
+  return command.kind === "loop" ? command : null;
 }
 
 /**
@@ -400,10 +493,7 @@ export function orchestration(
         // addition, and the latest attempt's widen grants, so both conflict
         // checks cannot drift apart.
         const held = effectiveTask(other, definition);
-        if (
-          attemptHoldsResources(holding) &&
-          scopeConflictReason(candidate, held)
-        ) {
+        if (attemptHoldsResources(holding) && conflictReason(candidate, held)) {
           return `task "${definition.id}" in "${other.title}" still holds its resources.`;
         }
       }
@@ -415,7 +505,7 @@ export function orchestration(
   };
   /**
    * True when a task may start an attempt now. Shared by fresh reservations and
-   * same-agent continuations so writers never overlap in time.
+   * same-agent continuations so conflicting scopes never overlap in time.
    */
   const canReserve = async (
     current: StoredSymphony,
@@ -1318,10 +1408,7 @@ export function orchestration(
         if (!symphonyHoldsResources(other) || !attemptHoldsResources(holding)) {
           continue;
         }
-        const reason = scopeConflictReason(
-          grown,
-          effectiveTask(other, definition),
-        );
+        const reason = conflictReason(grown, effectiveTask(other, definition));
         if (reason) {
           throw new SymphonyError(
             `addWrites refused: ${paths.join(", ")} overlaps task "${definition.id}" in ${other.title} (${reason}).`,
@@ -1473,7 +1560,7 @@ export function orchestration(
       ) {
         return current;
       }
-      // Keep writers serialized even though the agent is reused.
+      // Keep conflicting scopes apart even though the agent is reused.
       if (!(await canReserve(current, task, additions))) {
         return current;
       }
@@ -2054,6 +2141,7 @@ export function orchestration(
   const loop = async (
     agentId: string,
     command: Extract<SymphonyCommand, { kind: "loop" }>,
+    auto = false,
   ) => {
     let symphony = await owner(agentId, command.symphonyId);
     // Every attempt that already existed before this loop, so the
@@ -2414,6 +2502,7 @@ export function orchestration(
           added: newTasks.map((task) => task.id),
           deferred,
           ...(approval ? { approval } : {}),
+          ...(auto ? { auto: true } : {}),
           ...(previousReports.length ? { previousReports } : {}),
         },
       ];
@@ -2865,8 +2954,26 @@ export function orchestration(
           (verdict.verdict === "succeeded" ||
             verdict.verdict === "needs-changes")
         ) {
-          notification = `loop-end:${verdict.loop}`;
-          message = loopEndMessage(symphony, verdict);
+          // A routine next loop starts here, so the Conductor spends no turn
+          // on it; only a decision the scheduler cannot make wakes it. Once
+          // the Conductor was woken for this loop end, the loop is its call.
+          const end = `loop-end:${verdict.loop}`;
+          const auto =
+            symphony.execution.conducting?.notification === end
+              ? null
+              : autoLoopCommand(symphony, verdict);
+          let autoError: string | undefined;
+          if (auto && symphony.source.agentId) {
+            try {
+              await loop(symphony.source.agentId, auto, true);
+              continue;
+            } catch (error) {
+              autoError =
+                error instanceof Error ? error.message : "unknown error";
+            }
+          }
+          notification = end;
+          message = loopEndMessage(symphony, verdict, autoError);
         }
         if (
           notification &&

@@ -215,10 +215,12 @@ async function fixture(
       title: "Delegated work",
       goal: "Inspect API and UI independently and combine findings",
       concurrency: 2,
+      // Most loop tests drive `loop` themselves; auto-loop tests opt in.
+      autoLoop: false,
       ...fields,
     });
-  const start = async (key = "team") => {
-    const result = await orchestrate(key, { conductor: "agent" });
+  const start = async (key = "team", fields: Record<string, unknown> = {}) => {
+    const result = await orchestrate(key, { conductor: "agent", ...fields });
     assert.ok("symphony" in result);
     return result.symphony;
   };
@@ -486,12 +488,23 @@ void test("Conductor agent creates distinct children and joins explicit reports 
   assert.equal((await f.read(planning.id)).status, "completed");
 });
 
-void test("writers stay serialized across report and reload until their task agent stops", async () => {
+void test("disjoint writers launch together", async () => {
   const f = await fixture();
   const plan = await f.start();
   const symphony = await f.define(plan, [
     task("a", [], ["a"]),
     task("b", [], ["b"]),
+  ]);
+  assert.ok(latestAttempt(symphony, "a"));
+  assert.ok(latestAttempt(symphony, "b"));
+});
+
+void test("overlapping writers stay serialized across report and reload until their task agent stops", async () => {
+  const f = await fixture();
+  const plan = await f.start();
+  const symphony = await f.define(plan, [
+    task("a", [], ["a"]),
+    task("b", [], ["a/b"]),
   ]);
   assert.equal(symphony.execution.attempts.length, 1);
   const a = await f.report(plan.id, "a");
@@ -1496,12 +1509,12 @@ void test("a retry of a failed uncertain launch replays the same identity and co
   );
 });
 
-void test("a failed continuation waits while another writer holds resources", async () => {
+void test("a failed continuation waits while an overlapping writer holds resources", async () => {
   const f = await fixture();
   const plan = await f.start();
   const symphony = await f.define(plan, [
     task("a", [], ["src/a"]),
-    task("b", [], ["src/b"]),
+    task("b", [], ["src"]),
   ]);
   const a = latestAttempt(symphony, "a");
   assert.ok(a && plan.source.agentId);
@@ -1571,7 +1584,7 @@ void test("dispatch addWrites validates the grown scope before it is stored", as
   );
 });
 
-void test("dispatch addWrites promotes a blocked reader but refuses while a writer holds", async () => {
+void test("dispatch addWrites promotes a blocked reader but refuses while a writer holds the path", async () => {
   const f = await fixture();
   const plan = await f.start();
   const symphony = await f.define(plan, [
@@ -1585,7 +1598,7 @@ void test("dispatch addWrites promotes a blocked reader but refuses while a writ
       checks: [],
       profile: "Small",
     },
-    task("writer", [], ["src/b"]),
+    task("writer", [], ["shared/helper.ts"]),
   ]);
   const reader = latestAttempt(symphony, "reader");
   const writer = latestAttempt(symphony, "writer");
@@ -1610,7 +1623,7 @@ void test("dispatch addWrites promotes a blocked reader but refuses while a writ
       retryTaskId: "reader",
       addWrites: ["shared/helper.ts"],
     }),
-    /another writer holds resources/,
+    /overlaps task "writer".*overlapping read\/write scope/,
   );
   // With the writer done, the promotion is safe and records the addition on the
   // resumed attempt without changing the plan.
@@ -2778,6 +2791,146 @@ void test("loops reopen the owning task and re-run its review until the loop suc
     summary: "All loops succeeded",
   });
   assert.equal((await f.read(plan.id)).status, "completed");
+});
+
+void test("auto-loop reopens a routine loop's owners without a Conductor turn", async () => {
+  const f = await fixture();
+  const plan = await f.start("auto-loop", { autoLoop: true });
+  assert.ok(plan.source.agentId);
+  assert.equal(plan.execution.conducting?.autoLoop, true);
+  const symphony = await f.define(plan, [
+    task("api", [], ["src/api"]),
+    reviewTask("review", ["api"]),
+  ]);
+  const api = latestAttempt(symphony, "api");
+  assert.ok(api);
+  await f.report(plan.id, "api");
+  f.active.set(api.agentId, false);
+  await f.reconcile();
+  const review1 = latestAttempt(await f.read(plan.id), "review");
+  assert.ok(review1);
+  await f.send(review1.agentId, {
+    kind: "report",
+    symphonyId: plan.id,
+    attemptId: review1.id,
+    report: needsChangesReport(),
+  });
+  f.active.set(review1.agentId, false);
+  await f.reconcile();
+
+  // Loop 2 starts on the owner's agent, and the Conductor is not woken.
+  assert.equal(
+    f.wakes.includes(`${plan.source.agentId}:${plan.id}:loop-end:1`),
+    false,
+  );
+  const current = await f.read(plan.id);
+  const api2 = latestAttempt(current, "api");
+  assert.ok(api2);
+  assert.equal(api2.loop, 2);
+  assert.equal(api2.agentId, api.agentId);
+  assert.deepEqual(
+    api2.reopen?.findings.map((entry) => entry.id),
+    ["F1"],
+  );
+  const record = current.execution.conducting?.loops?.at(-1);
+  assert.equal(record?.number, 2);
+  assert.equal(record?.auto, true);
+  assert.match(record?.reason ?? "", /Fix 1 blocking finding \[F1 \(api\)\]/);
+
+  // The fixed loop wakes the Conductor once, naming the automatic loop.
+  await f.report(plan.id, "api");
+  f.active.set(api2.agentId, false);
+  await f.reconcile();
+  const review2 = latestAttempt(await f.read(plan.id), "review");
+  assert.ok(review2 && review2.id !== review1.id);
+  await f.report(plan.id, "review", "completed", {
+    summary: "No blocking findings",
+  });
+  f.active.set(review2.agentId, false);
+  await f.reconcile();
+  assert.ok(f.wakes.includes(`${plan.source.agentId}:${plan.id}:loop-end:2`));
+  assert.match(
+    conductorWake(f, plan.id, plan.source.agentId)?.prompt ?? "",
+    /Loop 2 succeeded\. Loop 2 started automatically/,
+  );
+});
+
+void test("auto-loop leaves repeated findings and a used budget to the Conductor", async () => {
+  const f = await fixture();
+  const plan = await f.start("auto-stop", { autoLoop: true, maxLoops: 3 });
+  assert.ok(plan.source.agentId);
+  const symphony = await f.define(plan, [
+    task("api", [], ["src/api"]),
+    reviewTask("review", ["api"]),
+  ]);
+  let api = latestAttempt(symphony, "api");
+  assert.ok(api);
+  await f.report(plan.id, "api");
+  f.active.set(api.agentId, false);
+  await f.reconcile();
+  let review = latestAttempt(await f.read(plan.id), "review");
+  assert.ok(review);
+  await f.send(review.agentId, {
+    kind: "report",
+    symphonyId: plan.id,
+    attemptId: review.id,
+    report: needsChangesReport(),
+  });
+  f.active.set(review.agentId, false);
+  await f.reconcile();
+  api = latestAttempt(await f.read(plan.id), "api");
+  assert.equal(api?.loop, 2);
+  assert.ok(api);
+  await f.report(plan.id, "api");
+  f.active.set(api.agentId, false);
+  await f.reconcile();
+  review = latestAttempt(await f.read(plan.id), "review");
+  assert.ok(review);
+  // The same finding again: the scheduler does not start loop 3.
+  await f.send(review.agentId, {
+    kind: "report",
+    symphonyId: plan.id,
+    attemptId: review.id,
+    report: needsChangesReport(),
+  });
+  f.active.set(review.agentId, false);
+  await f.reconcile();
+  await f.reconcile();
+  assert.equal(latestAttempt(await f.read(plan.id), "api")?.loop, 2);
+  assert.ok(f.wakes.includes(`${plan.source.agentId}:${plan.id}:loop-end:2`));
+  assert.match(
+    conductorWake(f, plan.id, plan.source.agentId)?.prompt ?? "",
+    /repeat the previous loop/,
+  );
+
+  // A one-loop budget leaves even the first loop end to the Conductor.
+  const g = await fixture();
+  const limited = await g.start("auto-budget", { autoLoop: true, maxLoops: 1 });
+  assert.ok(limited.source.agentId);
+  const scored = await g.define(limited, [
+    task("api", [], ["src/api"]),
+    reviewTask("review", ["api"]),
+  ]);
+  const first = latestAttempt(scored, "api");
+  assert.ok(first);
+  await g.report(limited.id, "api");
+  g.active.set(first.agentId, false);
+  await g.reconcile();
+  const check = latestAttempt(await g.read(limited.id), "review");
+  assert.ok(check);
+  await g.send(check.agentId, {
+    kind: "report",
+    symphonyId: limited.id,
+    attemptId: check.id,
+    report: needsChangesReport(),
+  });
+  g.active.set(check.agentId, false);
+  await g.reconcile();
+  assert.equal(latestAttempt(await g.read(limited.id), "api")?.loop ?? 1, 1);
+  assert.match(
+    conductorWake(g, limited.id, limited.source.agentId)?.prompt ?? "",
+    /loop budget \(1\) is used/,
+  );
 });
 
 void test("a reopened task re-runs its transitive dependents with a short re-check", async () => {

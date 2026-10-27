@@ -343,6 +343,7 @@ void test("session hooks preserve configuration and inject command context witho
     | undefined;
   let remembered = 0;
   let removed = 0;
+  let settled = 0;
   const commands = await commandServer(
     await testDirectory(),
     async (input) => ({ acknowledged: input }),
@@ -377,6 +378,10 @@ void test("session hooks preserve configuration and inject command context witho
       remembered++;
     },
     async () => {},
+    Promise.resolve(),
+    () => {
+      settled++;
+    },
   );
   try {
     assert.ok(create && open);
@@ -546,6 +551,7 @@ void test("session hooks preserve configuration and inject command context witho
       context,
     );
     await assert.rejects(readFile(binding), { code: "ENOENT" });
+    assert.equal(settled, 1, "An archived agent is observed at once");
     await open({ request: { ...request, reason: "resume" } }, context);
     assert.ok(
       await readFile(binding, "utf8"),

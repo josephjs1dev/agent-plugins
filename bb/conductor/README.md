@@ -56,7 +56,9 @@ Conductor's environment. The `bb-conductor-orchestrate` skill guides the thread.
 - **Sends.** bb does not deduplicate sends, so the plugin records each wake
   message ID and skips a repeat.
 - **Reconciliation.** A background service reconciles symphonies every 5
-  seconds.
+  seconds. A `thread.idle`, `thread.failed`, `thread.archived` or
+  `thread.deleted` event also reconciles at once, so a stopped task agent's
+  dependents and loop end do not wait for the next tick.
 - **Podium.** `client/` renders the core's view logic from
   `packages/conductor/podium/` with bb's vendored components (`components/ui/`,
   from bb's registry). The server publishes a `podium.changed` realtime signal

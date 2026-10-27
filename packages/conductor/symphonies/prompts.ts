@@ -15,6 +15,17 @@ function clamp(value: string, max: number): string {
 const paths = (value: readonly string[], empty: string): string =>
   value.length ? value.join(", ") : empty;
 
+/**
+ * The symphony goal as one task sees it. Every task repeats it, and each task
+ * description is a standalone contract, so a long goal is shortened.
+ */
+function assignmentGoal(goal: string): string {
+  const max = SYMPHONY_LIMITS.assignmentGoalChars;
+  return goal.length > max
+    ? `${goal.slice(0, max)}… (shortened; your assignment is authoritative)`
+    : goal;
+}
+
 /** One prerequisite task's bounded result, rendered as an assignment line. */
 export interface PrerequisiteResult {
   taskId: string;
@@ -105,6 +116,9 @@ function reopenLines(
     `Reopened: ${clamp(input.reason, 2000)}`,
     "Findings to address:",
     ...findingLines(input.findings, detail),
+    "Fix each finding. If a finding conflicts with the goal or a user decision, leave",
+    "that code unchanged and give the reason in your report summary; the review",
+    "re-checks it.",
   ];
 }
 
@@ -124,7 +138,10 @@ function previousLines(
     lines.push(
       "Previous loop findings to confirm fixed:",
       ...findingLines(input.findings, detail),
-      "Confirm each finding is fixed; report completed only when none remain.",
+      "Confirm each finding is fixed, or that the owner's reason for declining it",
+      "holds. Review only the paths that changed since then, and raise a new blocking",
+      "finding only for a defect in those changes. Report completed only when no",
+      "blocking finding remains.",
     );
   }
   if (input.omitted) {
@@ -296,7 +313,7 @@ function renderAssignment(
     `You are a task agent in Conductor symphony ${input.symphonyId}, attempt ${input.attemptId}.`,
     "",
     `Task ${input.taskId}: ${input.title}`,
-    `Goal: ${input.goal}`,
+    `Goal: ${assignmentGoal(input.goal)}`,
     `Assignment: ${input.outcome}`,
     `Reads: ${paths(input.reads, "none")}`,
     `Writes: ${paths(input.writes, "none (read-only)")}`,
@@ -316,8 +333,9 @@ function renderAssignment(
   lines.push(...shortenedLines(detail));
   lines.push(
     "",
-    "Other agents share this checkout. Edit only your write paths. Do not commit,",
-    "push, reload plugins, start agents, or go beyond this assignment.",
+    "Other agents share this checkout and may edit other paths at the same time.",
+    "Edit only your write paths. Do not commit, push, reload plugins, start",
+    "agents, or go beyond this assignment.",
     "",
     "If the sandbox blocks a command this task needs (for example `Operation not",
     "permitted`, a blocked network call, or a process killed by a signal), rerun",
@@ -330,8 +348,8 @@ function renderAssignment(
     "When the work is done, run the required checks. If one fails because of your",
     "change, fix it and run it again, up to 3 rounds. Stop early if the same error",
     "repeats or if you need user input, more write paths, or a different model.",
-    "Report problems that already existed and aren't caused by your change; don't",
-    "fix them.",
+    "Report problems that already existed or come from another agent's paths and",
+    "aren't caused by your change; don't fix them.",
     "",
     "Then call the Conductor `report` tool:",
     "- completed: the work is done and every required check passed. A review also",
@@ -339,7 +357,7 @@ function renderAssignment(
     "- needs-changes: the work ran but required checks still fail after your own fix",
     "  rounds, or a review found blocking defects. List each defect in `findings`",
     "  with its owning taskId and `path:line`, or name the failed checks. This ends",
-    "  the loop; the Conductor reopens the owning tasks for the next loop.",
+    "  the loop; the owning tasks reopen in the next loop.",
     "- failed: the harness could not run the work (launch failed or unconfirmed,",
     "  you are unreachable, you cannot edit, read or run what the task needs even",
     "  after escalation, or you refuse the scope). Also say what you tried, the",
@@ -357,6 +375,12 @@ function renderAssignment(
       "This is a review task: report completed only when no blocking finding",
       "remains. Otherwise report needs-changes with each finding's owning taskId and",
       "`path:line`, and give the previous findings' ids when confirming a fix.",
+      "A finding is blocking only when it names a concrete failing scenario (input",
+      "or state, then the wrong result or crash), a failed required check, an unmet",
+      "acceptance criterion, or a security defect. Style, naming, refactors,",
+      "speculative risks and work outside the goal are minor. Before you report,",
+      "re-read the code for each blocking finding and drop it if you cannot state",
+      "its failing scenario. Each blocking finding starts another loop.",
     );
   }
   return lines.join("\n");

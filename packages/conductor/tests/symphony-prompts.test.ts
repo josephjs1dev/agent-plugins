@@ -83,6 +83,14 @@ void test("the assignment states the three report outcomes and review guidance",
   const review = assignmentPrompt({ ...base, review: true });
   assert.match(review, /This is a review task/);
   assert.match(review, /report completed only when no blocking finding/);
+  // The rubric keeps style and speculation out of the blocking set.
+  assert.match(
+    review,
+    /blocking only when it names a concrete failing scenario/,
+  );
+  assert.match(review, /speculative risks and work outside the goal are minor/);
+  assert.match(review, /drop it if you cannot state\s+its failing scenario/);
+  assert.doesNotMatch(prompt, /concrete failing scenario/);
   // A reopened prompt carries the full finding objects, not a summary line.
   const reopened = assignmentPrompt({
     ...base,
@@ -95,6 +103,8 @@ void test("the assignment states the three report outcomes and review guidance",
     /F1 \[blocking\] task api at src\/api\.ts:41: concertId is validated after its lookup\./,
   );
   assert.match(reopened, /Suggested fix: Validate before the lookup\./);
+  // The owner may decline a finding that conflicts with the goal.
+  assert.match(reopened, /conflicts with the goal or a user decision/);
   // A dependent re-check names the changed prerequisite and the old findings.
   const recheck = continuationPrompt({
     taskId: "review",
@@ -108,6 +118,29 @@ void test("the assignment states the three report outcomes and review guidance",
   assert.match(recheck, /Prerequisite api changed in loop 2/);
   assert.match(recheck, /Previous loop findings to confirm fixed:/);
   assert.match(recheck, /Confirm each finding is fixed/);
+  assert.match(recheck, /reason for declining it\s+holds/);
+  assert.match(recheck, /Review only the paths that changed/);
+});
+
+void test("the assignment shortens a long goal and keeps a short one", () => {
+  const base = {
+    symphonyId: fixtureSymphonyId,
+    attemptId: "attempt-1",
+    taskId: "api",
+    title: "Inspect the API",
+    outcome: "Map the public endpoints",
+    reads: ["src/api"],
+    writes: [],
+    checks: [],
+    prerequisites: [],
+  };
+  const max = SYMPHONY_LIMITS.assignmentGoalChars;
+  const exact = assignmentPrompt({ ...base, goal: "g".repeat(max) });
+  assert.match(exact, new RegExp(`Goal: g{${max}}\\n`));
+  const long = assignmentPrompt({ ...base, goal: `${"g".repeat(max)}tail` });
+  assert.doesNotMatch(long, /tail/);
+  assert.match(long, /… \(shortened; your assignment is authoritative\)/);
+  assert.match(long, /Assignment: Map the public endpoints/);
 });
 
 void test("prompts shorten findings only to fit the saved prompt limit", () => {

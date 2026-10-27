@@ -7,10 +7,10 @@ import {
 } from "./commands";
 import {
   attemptActive,
+  conflictReason,
   effectiveTask,
   scoreIssues,
   overlap,
-  scopeConflictReason,
 } from "./score";
 import {
   latestAttempt,
@@ -195,7 +195,7 @@ export function symphonyExecution(
         if (
           symphonyHoldsResources(other) &&
           attemptHoldsResources(attempt) &&
-          scopeConflictReason(candidate, effectiveTask(other, definition))
+          conflictReason(candidate, effectiveTask(other, definition))
         ) {
           throw new SymphonyError(
             `Task resources are still owned by ${other.title} / ${definition.id}. Resume or report that work before claiming this task.`,
@@ -703,7 +703,7 @@ export function symphonyExecution(
             ) {
               continue;
             }
-            const reason = scopeConflictReason(
+            const reason = conflictReason(
               requested,
               effectiveTask(other, definition),
             );

@@ -10,7 +10,6 @@ import {
   prerequisiteCycle,
   overlap,
   projectScore,
-  scopeConflictReason,
   scoreIssues,
   transitiveDependents,
 } from "../symphonies/score";
@@ -668,7 +667,7 @@ void test("prerequisiteCycle detects cycles through loop-only edges", () => {
   );
 });
 
-void test("scopeConflictReason adds the writer fence to read/write overlap", () => {
+void test("conflictReason lets disjoint writers run together", () => {
   const first = task("first", {
     reads: [],
     writes: ["src/a"],
@@ -679,23 +678,27 @@ void test("scopeConflictReason adds the writer fence to read/write overlap", () 
     writes: ["src/b"],
     worker: { role: "implementation", profile: "default" },
   });
-  // Disjoint writers still serialize on one checkout.
+  // Disjoint writers on one checkout run concurrently.
+  assert.equal(conflictReason(first, second), null);
+  assert.equal(conflictReason(second, first), null);
+  // Nested writers still conflict.
   assert.equal(
-    scopeConflictReason(first, second),
-    "another writer holds resources",
+    conflictReason(first, task("nested", { reads: [], writes: ["src"] })),
+    "overlapping read/write scope",
   );
+  // A shared resource serializes disjoint writers.
   assert.equal(
-    scopeConflictReason(second, first),
-    "another writer holds resources",
+    conflictReason(
+      { ...first, resources: ["check-src"] },
+      { ...second, resources: ["check-src"] },
+    ),
+    "shared exclusive resource",
   );
   // A reader that does not overlap the writer stays independent.
+  assert.equal(conflictReason(first, task("read", { reads: ["docs"] })), null);
+  // A reader of the writer's scope waits for it.
   assert.equal(
-    scopeConflictReason(first, task("read", { reads: ["docs"] })),
-    null,
-  );
-  // Read/write overlap keeps its more specific reason.
-  assert.equal(
-    scopeConflictReason(first, task("reader", { reads: ["src"] })),
+    conflictReason(first, task("reader", { reads: ["src"] })),
     "overlapping read/write scope",
   );
 });

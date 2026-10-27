@@ -96,10 +96,11 @@ Conductor reads only the given session's log; it does not scan unrelated
 session contents. Harness-specific reader code lives in `packages/conductor/harnesses/`
 behind one harness-neutral interface.
 
-Up to four read-only task agents can run concurrently (three by default). Task agents share
-the current checkout; writers are serialized, including against existing recorded
-Symphonies. Scope declarations guide task assignment and prompts; they are not filesystem
-sandboxes. Profiles preserve configured settings without silently granting broader
+Up to four task agents can run concurrently (three by default). Task agents share
+the current checkout. Two tasks wait for each other only when one task's writes overlap the
+other's reads or writes, or when they share a resource, including against existing recorded
+Symphonies. Writers with disjoint scopes run in parallel. Scope declarations guide task
+assignment and prompts; they are not filesystem sandboxes. Profiles preserve configured settings without silently granting broader
 permissions. Small edits need no symphony unless requested.
 
 A report alone does not release an orchestrated task agent's resources. Dependencies
@@ -172,8 +173,9 @@ By default the requesting agent becomes the symphony's Conductor agent. The
 acknowledgement includes `instructions` for defining, dispatching, and finishing
 the symphony from the same conversation; no separate Conductor agent is created. While task
 agents work, the Conductor should not edit the checkout itself, because
-Conductor only serializes writes between task agents. Notifications to a busy
-Conductor wait until its turn ends.
+Conductor only orders overlapping scopes between task agents. Notifications to a busy
+Conductor wait until its turn ends. The service reconciles every 5 seconds, and at once
+when an agent's turn ends or the agent is archived.
 
 Set `"conductor":"agent"` to create a dedicated Conductor agent instead. Optional
 `conductorProfile` selects its configured profile by name and implies
@@ -309,8 +311,13 @@ profile/model, selection reason and any override or warning.
 
 `review: true` marks a read-only review task. A review task starts once each prerequisite is completed
 or needs changes and receives their open findings and failed checks; other tasks
-wait for completed prerequisites. Assignments carry the goal,
+wait for completed prerequisites. Assignments carry the goal (shortened to 4000 characters),
 prerequisite reports, declared scopes/checks, and exact symphony/attempt identity.
+A review assignment counts a finding as blocking only for a concrete failing scenario,
+a failed check, an unmet acceptance criterion or a security defect, and asks the
+reviewer to re-verify each one first. A re-review checks the previous findings and
+only the changed paths. A reopened owner may decline a finding that conflicts with
+the goal and give the reason for the review to re-check.
 Task agents call `report` or `block` for their existing assignment, then stop. They do
 not create another symphony or claim the Conductor's task. The scheduler observes
 settlement, starts dependents, and notifies the Conductor agent of blockers or the
@@ -353,12 +360,19 @@ their reasons in the attempts, and include them in the finish summary.
 
 #### Loops
 
-Each loop wakes the Conductor once (`loop-end:<N>`) with its verdict: it
+With `autoLoop` (the default), a routine loop that ends needing changes starts
+the next loop without a Conductor turn. The scheduler sends itself a `loop` that
+reopens the owner of every blocking finding and every needs-changes task, and
+records it with `auto: true`. It leaves the loop to the Conductor when the
+findings repeat, the budget is used, an item was deferred, or the automatic
+`loop` fails. Set `"autoLoop": false` at `orchestrate` to approve every loop.
+
+Otherwise each loop wakes the Conductor once (`loop-end:<N>`) with its verdict: it
 succeeded, it needs changes with the blocking findings and failed checks, the
-loop budget is used, or the blocking findings repeat the previous loop. Failed
-and blocked tasks keep their per-task wake and are handled first. After a loop
-needs changes, the Conductor reopens the owning tasks in the same symphony with
-`loop`:
+loop budget is used, or the blocking findings repeat the previous loop. The wake
+names any loop that started automatically. Failed and blocked tasks keep their
+per-task wake and are handled first. After a loop needs changes, the Conductor
+reopens the owning tasks in the same symphony with `loop`:
 
 ```json
 {
@@ -783,4 +797,4 @@ only when no remaining symphony references it; shared context is retained. Offli
 maintenance must still preserve unresolved claims.
 Symphonies dispatch real children and observe settlement through the host.
 Task agents run their own checks and submit evidence. Cancellation of a symphony, isolated
-worktrees, parallel writers, and recurring schedules are not part of this release.
+worktrees, and recurring schedules are not part of this release.

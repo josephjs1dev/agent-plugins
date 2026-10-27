@@ -76,15 +76,27 @@ export function symphonyService({
     () => metrics,
   );
   let reconciling = false;
+  let again = false;
+  // An agent event during a pass asks for one more pass, so a settlement is
+  // never left for the next tick.
   const reconcile = async () => {
-    if (!connected() || reconciling) {
+    if (!connected()) {
+      return;
+    }
+    if (reconciling) {
+      again = true;
       return;
     }
     reconciling = true;
     try {
-      await execution.reconcile();
-    } catch {
-      /* Preserve durable claims; retry observation on the next tick. */
+      do {
+        again = false;
+        try {
+          await execution.reconcile();
+        } catch {
+          /* Preserve durable claims; retry observation on the next tick. */
+        }
+      } while (again && connected());
     } finally {
       reconciling = false;
     }
@@ -138,6 +150,7 @@ export function symphonyService({
     access,
     ready,
     interrupt: execution.interrupt,
+    reconcile,
     async close(): Promise<void> {
       clearInterval(timer);
       await ready;

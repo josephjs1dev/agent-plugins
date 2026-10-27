@@ -288,14 +288,22 @@ void test("schema bounds and score rejection do not create symphonies", async ()
   assert.equal((await f.store.list()).symphonies.length, 0);
 });
 
-void test("disjoint writer scopes still serialize on the same checkout", async () => {
+void test("disjoint writer scopes run together on the same checkout", async () => {
   const f = await fixture();
   const id = await f.start("writers", [
     { id: "a", title: "A", description: "Edit A", reads: ["a"], writes: ["a"] },
     { id: "b", title: "B", description: "Edit B", reads: ["b"], writes: ["b"] },
+    {
+      id: "nested",
+      title: "Nested",
+      description: "Edit inside A",
+      reads: [],
+      writes: ["a/inner"],
+    },
   ]);
   await f.claim(id, "a");
-  await assert.rejects(f.claim(id, "b"), /still owned/);
+  await f.claim(id, "b");
+  await assert.rejects(f.claim(id, "nested"), /still owned/);
 });
 
 // === Task agent widening (`widen`) ===
@@ -697,7 +705,7 @@ void test("widen validates the grown scope against the captured placement", asyn
   );
 });
 
-void test("widen refuses while another writer holds resources", async () => {
+void test("widen refuses a path another writer holds", async () => {
   const f = await fixture();
   const writerId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
   await f.store.create(
@@ -714,7 +722,7 @@ void test("widen refuses while another writer holds resources", async () => {
     orchestratedSymphony({
       id: otherId,
       title: "Other writer",
-      tasks: [implementationTask("other", ["src/other"])],
+      tasks: [implementationTask("other", ["docs"])],
       attempts: [orchestratedAttempt("other", "worker-other", attemptId(13))],
     }),
     planContext,
@@ -730,7 +738,7 @@ void test("widen refuses while another writer holds resources", async () => {
       },
       "worker-reader",
     ),
-    /another writer holds resources/,
+    /held by task "other".*overlapping read\/write scope/,
   );
   assert.equal(
     (await f.read(writerId)).execution.attempts[0]?.grantedWrites,

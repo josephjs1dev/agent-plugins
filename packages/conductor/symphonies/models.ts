@@ -38,6 +38,8 @@ export const SYMPHONY_LIMITS = {
   findingsPerReport: 24,
   /** Characters a saved agent prompt or wake may hold. */
   promptChars: 128_000,
+  /** Goal characters repeated in each task assignment. */
+  assignmentGoalChars: 4_000,
 } as const;
 export const uuidSchema = z.string().uuid();
 export const taskIdSchema = z
@@ -502,7 +504,7 @@ export const previousReportSchema = z
       .max(SYMPHONY_LIMITS.findingsPerReport),
   })
   .strict();
-// One record per loop the Conductor started with `loop`. Loop 1 is implicit
+// One record per loop started with `loop` or by auto-loop. Loop 1 is implicit
 // and has no record.
 export const loopRecordSchema = z
   .object({
@@ -513,6 +515,9 @@ export const loopRecordSchema = z
     added: z.array(taskIdSchema).max(SYMPHONY_LIMITS.tasks).default([]),
     deferred: z.array(deferredItemSchema).max(24).default([]),
     approval: loopApprovalSchema.optional(),
+    // True when the scheduler started the loop from the previous loop's
+    // findings and failed checks without a Conductor turn.
+    auto: z.boolean().optional(),
     // Legacy aggregate of the open blocking findings, capped at one report's
     // limit. Kept readable for records stored before `previousReports`.
     previousFindings: z
@@ -553,6 +558,9 @@ export const executionSchema = z
           .min(1)
           .max(SYMPHONY_LIMITS.maxLoops)
           .optional(),
+        // Whether the scheduler starts a routine next loop itself. Absent on
+        // records stored before auto-loop, which keep waiting for `loop`.
+        autoLoop: z.boolean().optional(),
         // Records of loops started with `loop`, oldest first. Grows past
         // `maxLoops` only with a recorded approval.
         loops: z

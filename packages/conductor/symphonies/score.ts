@@ -58,6 +58,14 @@ export const overlap = (a: string, b: string) =>
   a.startsWith(`${b}/`) ||
   b.startsWith(`${a}/`);
 
+/**
+ * Why two tasks cannot run at the same time: a shared exclusive resource, or a
+ * write that overlaps the other task's reads or writes. Writers with disjoint
+ * scopes run concurrently. Planning, `reserve`, claims, `widen`, and
+ * `addWrites` all use this so the scheduling and growth checks cannot drift
+ * apart. Callers pass effective tasks, so a granted path counts exactly like a
+ * declared write.
+ */
 export function conflictReason(
   a: TaskDefinition,
   b: TaskDefinition,
@@ -141,23 +149,6 @@ export function nextAttemptWrites(
     additions.length ? { addedWrites: [...additions] } : {},
   ];
   return writesAcrossAttempts(task, attempts);
-}
-
-/**
- * The conflict reason for two effective tasks that may start or grow: the
- * shared writer fence (two writers never overlap in time on one checkout) plus
- * `conflictReason`. `reserve`, claims, `widen`, and `addWrites` all use this so
- * the scheduling and growth checks cannot drift apart. Callers pass effective
- * tasks, so a granted path counts exactly like a declared write.
- */
-export function scopeConflictReason(
-  a: TaskDefinition,
-  b: TaskDefinition,
-): string | null {
-  if (a.writes.length > 0 && b.writes.length > 0) {
-    return "another writer holds resources";
-  }
-  return conflictReason(a, b);
 }
 
 /** A planning projection only: prerequisites and resource conflicts are distinct. */

@@ -27,6 +27,8 @@ export function commandHooks(
   remember: (paseo: PaseoApi) => void,
   interrupt: (agentId: string, message: string) => Promise<void>,
   ready: Promise<void> = Promise.resolve(),
+  // Observes a stopped agent now instead of on the next reconcile tick.
+  settled: () => void = () => {},
 ) {
   if (typeof server.before !== "function") {
     return () => {};
@@ -96,10 +98,14 @@ export function commandHooks(
       if (!access.available) {
         return;
       }
-      await interrupt(
-        event.agent.id,
-        `Source agent turn ${event.outcome.kind} before its task report. Resume in the source conversation; claims remain held.`,
-      );
+      try {
+        await interrupt(
+          event.agent.id,
+          `Source agent turn ${event.outcome.kind} before its task report. Resume in the source conversation; claims remain held.`,
+        );
+      } finally {
+        settled();
+      }
     }),
     server.on("agent.archived", async (event, { paseo }) => {
       remember(paseo);
@@ -117,6 +123,7 @@ export function commandHooks(
         if (access.commandPath) {
           await unbindAgent(access.commandPath, event.agent.id);
         }
+        settled();
       }
     }),
   ];
