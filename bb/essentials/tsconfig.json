@@ -16,5 +16,5 @@
       "@/*": ["./*"]
     }
   },
-  "include": ["server.ts", "server", "shared", "tests"]
+  "include": ["server.ts", "host.ts", "server", "shared", "tests"]
 }

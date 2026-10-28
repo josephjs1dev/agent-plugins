@@ -1,7 +1,7 @@
 # Essentials for bb
 
-Experimental. Essentials adds subscription limits, token history, and
-context-window reminders to bb. This adapter runs the Essentials core from `packages/essentials` on the bb plugin
+Experimental. Essentials adds subscription limits, token history,
+context-window reminders, and a workspace file explorer to bb. This adapter runs the Essentials core from `packages/essentials` on the bb plugin
 SDK. [PARITY.md](../../PARITY.md) lists what it supports. The
 [Paseo README](../../paseo/essentials/README.md) describes each feature, the
 provider logins, and the data sources in detail.
@@ -34,6 +34,30 @@ provider logins, and the data sources in detail.
 - **Child-thread cleanup.** A thread that has child threads gets **Clean up
   child threads** in its thread menu. **Archive idle child threads** and
   **Delete idle child threads** list the targets and ask for confirmation.
+- **Explorer.** Open **Explorer** from the thread's panel actions, or run
+  **Explorer: browse files** in the palette. It lists the thread's workspace
+  as an indented tree: folders first, keyboard arrow navigation, and **Load
+  more** per folder. A file opens in bb's native preview. Type in **Search
+  files** to search filenames and relative paths in every subfolder. The
+  search icon on a folder row limits search to that folder; breadcrumbs widen
+  it again. A row highlights under the pointer. The eye button hides or shows hidden files and folders (names that start with
+  a dot) in the tree and in search, for every thread.
+
+  In a Git work tree, the Explorer marks changes the way an IDE does:
+  **M** modified, **A** added, **U** untracked, **D** deleted, and **!**
+  conflicted, with the name tinted to match. Files and folders that Git
+  ignores are greyed out. A folder that holds a change shows a dot in the
+  color of its most important change. The status refreshes every 10 seconds
+  and on **Refresh files**.
+
+  Right-click a file or folder, or press the Menu key or Shift+F10 on a
+  focused row, for **Copy relative path** (from the workspace root) and **Delete
+  file…** or **Delete folder…**. Delete asks first, then permanently removes the file, or the
+  folder and everything in it. It does not use the Trash.
+
+  The Explorer keeps its state per thread while bb runs: scope, search text,
+  selected file, expanded folders, loaded pages, and scroll position. Opening
+  a preview and coming back restores it.
 
 ## How it maps to bb
 
@@ -50,6 +74,7 @@ provider logins, and the data sources in detail.
 | `/context-reminder demo`     | **Preview Context Reminder** in the composer `+` menu |
 | Provider `claude`            | Provider `claude-code`                                |
 | Archive or delete subagents  | Thread menu: **Clean up child threads**               |
+| Native file browser          | **Explorer** thread panel                             |
 
 - **No workspace scope.** bb has threads, not workspaces, so this adapter
   leaves out Paseo's workspace usage and always reads host-wide history. The
@@ -68,6 +93,31 @@ provider logins, and the data sources in detail.
   time. When you confirm, Essentials checks the tree again. A thread that
   started work since the check stays. When a thread fails, every thread above
   it stays. One cleanup reads at most 500 threads.
+- **Explorer.** The plugin's host entry (`host.ts`) reads folders on the
+  host that owns the thread's environment. The server resolves the root from
+  the thread, so the app never names a host path. Listing and search reject a
+  folder whose canonical path leaves the root. They skip Git internals,
+  symlinks, and special files. They show hidden files unless the eye button
+  hides them, and they show ignored files. A directory
+  page holds at most 200 entries. Search keeps the best 200 matches and ranks
+  filename matches first. It skips dependency and cache folders such as
+  `node_modules`, `.venv`, and `.cache`. It reads at most 100,000 entries and
+  64 folder levels, and a notice marks a partial result. A new search cancels
+  the same explorer's older one. Each read has a 15-second deadline. The
+  plugin reads no file content: bb's preview shows it. The view state lives
+  in the app's session storage, or in memory when storage is unavailable, so
+  closing bb clears it. The hidden-files choice lives in local storage.
+- **Explorer Git status.** The host runs `git status --porcelain=v1 -z
+--no-renames --untracked-files=normal --ignored=traditional -- .` in the
+  checkout, with `GIT_OPTIONAL_LOCKS=0` so it never takes the index lock.
+  Git reports an untracked or ignored folder once, and its contents inherit
+  that status. A rename shows as a delete and an add. One read keeps at most
+  20,000 entries. Git output stays on the host: an error says only that the
+  read failed.
+- **Explorer delete.** The host deletes only an entry inside the canonical
+  root that is still the confirmed kind and is not a symlink. A folder delete
+  removes links inside the folder, never their targets. Git internals cannot
+  be deleted.
 - **CLI maintenance.** bb updates its harnesses and lists their models
   itself, so this adapter leaves out Paseo's Harnesses screen.
 
@@ -101,7 +151,7 @@ only. bb's bundler resolves each core import from the core's real path, where
 no `zod` is installed. The `zod` entry in `packages/essentials/tsconfig.json`
 `paths` falls back to this adapter's `node_modules/zod`.
 
-Adapter code lives in `server.ts`, `server/engine/bb/`,
+Adapter code lives in `server.ts`, `host.ts`, `server/engine/bb/`,
 `server/entrypoints/`, `app.tsx`, `client/`, `shared/`, and `tests/`. The app
 bundle imports only Node-free core modules. `tests/bb-bundle.test.ts` checks
 that rule.

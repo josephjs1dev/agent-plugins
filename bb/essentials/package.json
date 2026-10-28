@@ -3,14 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Subscription limits, token history, workspace usage, context-window reminders, and child-thread cleanup for bb.",
+  "description": "Subscription limits, token history, workspace usage, context-window reminders, child-thread cleanup, and a workspace file explorer for bb.",
   "engines": {
     "bb": ">=0.46",
     "bbPluginSdk": ">=0.6.49"
   },
   "bb": {
     "name": "Essentials",
-    "description": "Subscription limits, token history, workspace usage, context-window reminders, and child-thread cleanup.",
+    "description": "Subscription limits, token history, workspace usage, context-window reminders, child-thread cleanup, and a workspace file explorer.",
     "branding": {
       "icon": "./assets/icon.svg",
       "experimental_icons": {
@@ -20,11 +20,13 @@
         "alarm": "./assets/icons/alarm.svg",
         "reset": "./assets/icons/reset.svg",
         "archive": "./assets/icons/archive.svg",
-        "trash": "./assets/icons/trash.svg"
+        "trash": "./assets/icons/trash.svg",
+        "folder": "./assets/icons/folder.svg"
       }
     },
     "server": "./server.ts",
-    "app": "./app.tsx"
+    "app": "./app.tsx",
+    "host": "./host.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.app.json",

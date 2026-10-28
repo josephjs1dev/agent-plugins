@@ -7,6 +7,8 @@ import {
   reminderSettings,
 } from "./server/entrypoints/context-reminder";
 import { observeThreads } from "./server/entrypoints/events";
+import { fileExplorerHandlers } from "./server/entrypoints/file-explorer";
+import { hostContract } from "./server/entrypoints/host-contract";
 import { usageHandlers } from "./server/entrypoints/usage";
 
 export default function plugin(bb: BbPluginApi): void {
@@ -24,14 +26,20 @@ export default function plugin(bb: BbPluginApi): void {
     realtime: bb.realtime,
     log: bb.log,
   });
+  const fileExplorer = fileExplorerHandlers({
+    sdk,
+    host: bb.hosts.experimental_client({ contract: hostContract }),
+  });
   bb.rpc.register(essentialsContract, {
     ...usage.handlers,
     ...reminder.handlers,
     ...childThreadHandlers(sdk),
+    ...fileExplorer.handlers,
   });
   observeThreads(bb, { reminder });
   bb.onDispose(async () => {
     reminder.clear();
+    fileExplorer.close();
     await usage.close();
   });
 }

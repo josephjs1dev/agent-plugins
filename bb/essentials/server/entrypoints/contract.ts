@@ -11,6 +11,14 @@ import {
 } from "essentials/codex-reset";
 import { readHistoryDefinition } from "essentials/history";
 import {
+  directoryPageSchema,
+  directoryRequestSchema,
+  searchRequestSchema,
+  searchResultSchema,
+  fileEntrySchema,
+} from "essentials/file-explorer/browser";
+import { gitStatusResultSchema } from "essentials/file-explorer/git";
+import {
   characterSchema,
   reminderConfigSchema,
   reminderNoticeSchema,
@@ -35,7 +43,7 @@ type Standard<Schema extends Typed> = StandardSchemaV1<
  * type rejects under `exactOptionalPropertyTypes`. The runtime contract is
  * the same, so keep the inferred input and output types and cast the rest.
  */
-function method<Input extends Typed, Output extends Typed>(definition: {
+export function method<Input extends Typed, Output extends Typed>(definition: {
   input: Input;
   output: Output;
 }) {
@@ -53,6 +61,9 @@ export const historyInput = readHistoryDefinition.input.omit({
   workspaceId: true,
   scope: true,
 });
+
+/** The thread's environment, or null when it has no live workspace. */
+const environmentId = z.string().nullable();
 
 export const reminderReadingSchema = z.object({
   usedTokens: z.int().min(0),
@@ -126,6 +137,31 @@ export const essentialsContract = defineRpcContract({
   "child_threads.run": method({
     input: runInputSchema,
     output: cleanupResultSchema,
+  }),
+  // bb-only: Paseo has a native file browser. The server resolves the root
+  // from the thread, so the app never names a host path.
+  "file_explorer.list": method({
+    input: directoryRequestSchema.extend({ threadId }).strict(),
+    output: directoryPageSchema.extend({ environmentId }),
+  }),
+  "file_explorer.search": method({
+    input: searchRequestSchema
+      .extend({
+        threadId,
+        /** One explorer; a new search cancels its older ones. */
+        sessionId: z.string().min(1).max(128),
+      })
+      .strict(),
+    output: searchResultSchema.extend({ environmentId }),
+  }),
+  "file_explorer.git_status": method({
+    input: thread,
+    output: gitStatusResultSchema.extend({ environmentId }),
+  }),
+  /** Permanently deletes a file, or a folder and its contents. */
+  "file_explorer.delete": method({
+    input: thread.extend({ entry: fileEntrySchema }).strict(),
+    output: z.object({ path: z.string() }),
   }),
 });
 export type EssentialsContract = typeof essentialsContract;

@@ -77,6 +77,7 @@ bb's vendored components in bb.
 | Context Reminder settings                            | done: settings screen with previews        | done: Context Reminder page, bb's settings form         |
 | Context Reminder preview                             | done: `/context-reminder demo`             | done: composer `+` menu                                 |
 | Archive or delete idle child threads                 | n/a: Paseo does it natively                | done: thread menu, adapter-only                         |
+| Workspace file explorer, search, Git status, delete  | n/a: Paseo has a native file browser       | done: thread panel, host entry reads the checkout       |
 
 Child-thread cleanup lives in the bb adapter only, because Paseo already
 archives and deletes child agents natively.

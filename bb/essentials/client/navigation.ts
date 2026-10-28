@@ -5,6 +5,8 @@ import { z } from "zod";
 
 /** The thread panel action that shows usage history. */
 export const HISTORY_ACTION = "usage-history";
+/** The thread panel action that shows the workspace file explorer. */
+export const FILE_EXPLORER_ACTION = "file-explorer";
 /** The nav panel paths of the Usage history and Context Reminder pages. */
 export const HISTORY_PAGE_PATH = "usage-history";
 export const REMINDER_PAGE_PATH = "context-reminder";

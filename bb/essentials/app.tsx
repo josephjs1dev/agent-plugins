@@ -1,6 +1,7 @@
 import { definePluginApp } from "@get-bb/plugin-sdk/app";
 import { ICONS } from "./shared/icons";
 import {
+  FILE_EXPLORER_ACTION,
   HISTORY_ACTION,
   HISTORY_PAGE_PATH,
   REMINDER_PAGE_PATH,
@@ -10,6 +11,7 @@ import { ReminderHeaderButton } from "./client/context-reminder/header-button";
 import { ProviderUsageButton } from "./client/usage/provider-button";
 import { HistoryPage, HistoryPanel } from "./client/history/panel";
 import { cleanupAction } from "./client/child-threads/action";
+import { FileExplorerPanel } from "./client/file-explorer/panel";
 import { CleanupDialog } from "./client/child-threads/dialog";
 import {
   PREVIEW_POPUP,
@@ -47,6 +49,22 @@ export default definePluginApp((app) => {
     title: "Usage history",
     icon: ICONS.chart,
     component: HistoryPanel,
+  });
+  // File content opens in bb's native preview.
+  app.slots.threadPanelAction({
+    id: FILE_EXPLORER_ACTION,
+    title: "Explorer",
+    icon: ICONS.folder,
+    component: FileExplorerPanel,
+    layout: "flush",
+  });
+  app.commands.register({
+    id: "open-file-explorer",
+    title: "Explorer: browse files",
+    isAvailable: ({ threadId }) => threadId !== null,
+    run: ({ openPanel }) => {
+      openPanel({ actionId: FILE_EXPLORER_ACTION, title: "Explorer" });
+    },
   });
   app.slots.experimental_threadAction(cleanupAction);
   app.slots.experimental_appOverlay({

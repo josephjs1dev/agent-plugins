@@ -7,4 +7,5 @@ export const ICONS = {
   reset: "essentials/reset",
   archive: "essentials/archive",
   trash: "essentials/trash",
+  folder: "essentials/folder",
 } as const;
