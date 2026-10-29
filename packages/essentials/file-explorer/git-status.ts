@@ -5,26 +5,38 @@ import { parsePorcelain, type GitStatusResult } from "./git";
 
 const execFileAsync = promisify(execFile);
 
-/** Runs `git` with `args` in `cwd` and returns its stdout. Tests replace it. */
+/**
+ * Runs `git` with `args` in `cwd`, writes `input` to its stdin, and returns
+ * its stdout. Tests replace it.
+ */
 export type RunGit = (
   args: readonly string[],
   cwd: string,
   signal: AbortSignal,
+  input?: string,
 ) => Promise<string>;
 
-/** Status output above this size fails instead of filling memory. */
+/** Git output above this size fails instead of filling memory. */
 const MAX_OUTPUT_BYTES = 16 * 1024 * 1024;
 
-const runGit: RunGit = async (args, cwd, signal) => {
-  const { stdout } = await execFileAsync("git", [...args], {
+export const runGit: RunGit = async (args, cwd, signal, input) => {
+  const running = execFileAsync("git", [...args], {
     cwd,
     signal,
     encoding: "utf8",
     maxBuffer: MAX_OUTPUT_BYTES,
     windowsHide: true,
-    // A read-only status must not take the index lock an agent may need.
+    // A read must not take the index lock an agent may need.
     env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" },
   });
+
+  if (input !== undefined) {
+    // Git can exit before it reads stdin. Its exit status reports the failure.
+    running.child.stdin?.on("error", () => undefined);
+    running.child.stdin?.end(input);
+  }
+
+  const { stdout } = await running;
 
   return stdout;
 };

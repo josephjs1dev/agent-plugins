@@ -37,7 +37,13 @@ afterEach(async () => {
 });
 
 const live = () => new AbortController().signal;
-const top = { folder: "", showHidden: true, filter: "", after: null };
+const top = {
+  folder: "",
+  showHidden: true,
+  showIgnored: true,
+  filter: "",
+  after: null,
+};
 
 /** Real file system calls that abort `controller` after `abortWhen` holds. */
 function abortingIO(
@@ -193,7 +199,7 @@ test("search finds nested files in the folder, skips caches, and follows no link
   await symlink(outside, join(root, "escape"), "dir");
   const all = await searchFiles(
     root,
-    { folder: "", showHidden: true, query: "NEEDLE" },
+    { folder: "", showHidden: true, showIgnored: true, query: "NEEDLE" },
     live(),
   );
   assert.deepEqual(
@@ -209,7 +215,12 @@ test("search finds nested files in the folder, skips caches, and follows no link
   assert.equal(all.truncated, false);
   const scoped = await searchFiles(
     root,
-    { folder: "src", showHidden: true, query: "deep helper" },
+    {
+      folder: "src",
+      showHidden: true,
+      showIgnored: true,
+      query: "deep helper",
+    },
     live(),
   );
   assert.deepEqual(scoped.entries, [
@@ -218,7 +229,12 @@ test("search finds nested files in the folder, skips caches, and follows no link
   await assert.rejects(
     searchFiles(
       root,
-      { folder: "escape", showHidden: true, query: "needle" },
+      {
+        folder: "escape",
+        showHidden: true,
+        showIgnored: true,
+        query: "needle",
+      },
       live(),
     ),
     /outside/,
@@ -233,7 +249,12 @@ test("search bounds and ranks results and reports an incomplete scan", async () 
   }
 
   await writeFile(join(root, "needle"), "");
-  const request = { folder: "", showHidden: true, query: "needle" };
+  const request = {
+    folder: "",
+    showHidden: true,
+    showIgnored: true,
+    query: "needle",
+  };
   const result = await searchFiles(root, request, live());
   assert.equal(result.entries.length, PAGE_SIZE);
   assert.equal(result.entries[0]?.path, "needle");
@@ -257,7 +278,7 @@ test("cancelling a search closes every open directory", async () => {
   await assert.rejects(
     searchFiles(
       root,
-      { folder: "", showHidden: true, query: "needle" },
+      { folder: "", showHidden: true, showIgnored: true, query: "needle" },
       controller.signal,
       abortingIO(controller, handles, (path) => path.endsWith("nested")),
     ),
@@ -275,7 +296,7 @@ test("search keeps other results when a nested folder is unreadable", async () =
   await writeFile(join(root, "needle.ts"), "");
   const result = await searchFiles(
     root,
-    { folder: "", showHidden: true, query: "needle" },
+    { folder: "", showHidden: true, showIgnored: true, query: "needle" },
     live(),
     {
       canonicalize: (path) => realpath(path),
@@ -314,7 +335,7 @@ test("hidden entries are left out when showHidden is off", async () => {
   );
   const found = await searchFiles(
     root,
-    { folder: "", showHidden: false, query: "needle" },
+    { folder: "", showHidden: false, showIgnored: true, query: "needle" },
     live(),
   );
   assert.deepEqual(found.entries, [{ path: "src/needle.ts", kind: "file" }]);

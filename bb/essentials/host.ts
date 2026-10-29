@@ -1,4 +1,5 @@
 import { experimental_defineHostEntry } from "@get-bb/plugin-sdk";
+import { searchContent } from "essentials/file-explorer/content-search";
 import { deleteEntry } from "essentials/file-explorer/delete";
 import { readGitStatus } from "essentials/file-explorer/git-status";
 import { readDirectory, searchFiles } from "essentials/file-explorer/reader";
@@ -13,6 +14,10 @@ export default experimental_defineHostEntry({
       readDirectory(rootPath, input, context.signal),
     "file_explorer.search": ({ rootPath, ...input }, context) =>
       searchFiles(rootPath, input, context.signal),
+    "file_explorer.content": ({ rootPath, ...input }, context) =>
+      searchContent(rootPath, input, context.signal, {
+        bin: process.env.ESSENTIALS_RG_BIN || "rg",
+      }),
     "file_explorer.git_status": ({ rootPath }, context) =>
       readGitStatus(rootPath, context.signal),
     "file_explorer.delete": ({ rootPath, entry }, context) =>

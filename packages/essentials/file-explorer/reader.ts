@@ -18,6 +18,7 @@ import {
   type FileSearchRequest,
   type FileSearchResult,
 } from "./browser";
+import { gitIgnoreRules, type IgnoreRules } from "./ignored";
 
 /** The file system calls the reader makes. Tests replace them. */
 export interface DirectoryIO {
@@ -38,6 +39,10 @@ export interface SearchLimits {
 }
 
 const SEARCH_LIMITS: SearchLimits = { entries: 100_000, depth: 64 };
+
+const GIT_IGNORE_RULES = gitIgnoreRules();
+
+const nameOf = (entry: FileEntry) => entry.path.split("/").at(-1) ?? "";
 
 /** Whether `path` is `root` or below it. Both must be canonical. */
 export function isInside(root: string, path: string): boolean {
@@ -104,19 +109,33 @@ const isDenied = (error: unknown) =>
 
 /**
  * Reads one page of `folder` below `rootPath`. The scan keeps at most two
- * pages of candidates in memory. Cancellation closes the directory handle.
+ * pages of candidates in memory. Without `showIgnored`, it drops the entries
+ * Git ignores before it builds the page, so they take no page slots.
+ * Cancellation closes the directory handle.
  */
 export async function readDirectory(
   rootPath: string,
   input: DirectoryRequest,
   signal: AbortSignal,
   io: DirectoryIO = directoryIO,
+  ignore: IgnoreRules = GIT_IGNORE_RULES,
 ): Promise<DirectoryPage> {
-  const { folder, showHidden, filter, after } =
+  const { folder, showHidden, showIgnored, filter, after } =
     directoryRequestSchema.parse(input);
   const { target } = await workspaceFolder(rootPath, folder, signal, io);
   const needle = filter.toLowerCase();
   let candidates: FileEntry[] = [];
+  let batch: FileEntry[] = [];
+  const flush = async () => {
+    const ignored = showIgnored
+      ? new Set<string>()
+      : await ignore.names(target, batch.map(nameOf), signal);
+    candidates = pageCandidates(
+      [...candidates, ...batch.filter((entry) => !ignored.has(nameOf(entry)))],
+      after,
+    );
+    batch = [];
+  };
 
   for await (const dirent of await io.open(target)) {
     signal.throwIfAborted();
@@ -131,23 +150,25 @@ export async function readDirectory(
       continue;
     }
 
-    candidates.push(entry);
+    batch.push(entry);
 
-    if (candidates.length > PAGE_SIZE * 2) {
-      candidates = pageCandidates(candidates, after);
+    if (batch.length > PAGE_SIZE * 2) {
+      await flush();
     }
   }
 
   signal.throwIfAborted();
+  await flush();
 
-  return finishPage(pageCandidates(candidates, after));
+  return finishPage(candidates);
 }
 
 /**
  * Searches file names and paths in `folder` and its subfolders: a bounded,
  * cancellable depth-first scan. It skips `SEARCH_EXCLUDED_DIRECTORIES`,
- * follows no link, and stays inside the canonical root. Each directory
- * iterator closes on an early exit.
+ * follows no link, and stays inside the canonical root. Without
+ * `showIgnored`, one Git read lists the ignored paths first, and the scan
+ * skips them. Each directory iterator closes on an early exit.
  */
 export async function searchFiles(
   rootPath: string,
@@ -155,9 +176,20 @@ export async function searchFiles(
   signal: AbortSignal,
   io: DirectoryIO = directoryIO,
   limits: SearchLimits = SEARCH_LIMITS,
+  ignore: IgnoreRules = GIT_IGNORE_RULES,
 ): Promise<FileSearchResult> {
-  const { folder, showHidden, query } = searchRequestSchema.parse(input);
+  const { folder, showHidden, showIgnored, query } =
+    searchRequestSchema.parse(input);
   const { root, target } = await workspaceFolder(rootPath, folder, signal, io);
+  const ignored = showIgnored
+    ? new Set<string>()
+    : await ignore.paths(target, signal);
+
+  if (ignored.has(".")) {
+    return { entries: [], truncated: false, limited: false };
+  }
+
+  signal.throwIfAborted();
   let scanned = 0;
   let matches = 0;
   let limited = false;
@@ -198,7 +230,10 @@ export async function searchFiles(
 
       const entry = entryOf(dirent, parent, showHidden);
 
-      if (!entry) {
+      if (
+        !entry ||
+        ignored.has(folder ? entry.path.slice(folder.length + 1) : entry.path)
+      ) {
         continue;
       }
 

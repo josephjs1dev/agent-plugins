@@ -8,4 +8,5 @@ export const ICONS = {
   archive: "essentials/archive",
   trash: "essentials/trash",
   folder: "essentials/folder",
+  search: "essentials/search",
 } as const;

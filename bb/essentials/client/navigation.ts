@@ -7,6 +7,8 @@ import { z } from "zod";
 export const HISTORY_ACTION = "usage-history";
 /** The thread panel action that shows the workspace file explorer. */
 export const FILE_EXPLORER_ACTION = "file-explorer";
+/** The thread panel action that searches file contents. */
+export const CONTENT_SEARCH_ACTION = "content-search";
 /** The nav panel paths of the Usage history and Context Reminder pages. */
 export const HISTORY_PAGE_PATH = "usage-history";
 export const REMINDER_PAGE_PATH = "context-reminder";

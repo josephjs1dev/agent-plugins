@@ -1,6 +1,7 @@
 import { definePluginApp } from "@get-bb/plugin-sdk/app";
 import { ICONS } from "./shared/icons";
 import {
+  CONTENT_SEARCH_ACTION,
   FILE_EXPLORER_ACTION,
   HISTORY_ACTION,
   HISTORY_PAGE_PATH,
@@ -11,7 +12,15 @@ import { ReminderHeaderButton } from "./client/context-reminder/header-button";
 import { ProviderUsageButton } from "./client/usage/provider-button";
 import { HistoryPage, HistoryPanel } from "./client/history/panel";
 import { cleanupAction } from "./client/child-threads/action";
-import { FileExplorerPanel } from "./client/file-explorer/panel";
+import {
+  FileExplorerPanel,
+  NewThreadExplorerPanel,
+} from "./client/file-explorer/panel";
+import {
+  ContentSearchPanel,
+  NewThreadContentSearchPanel,
+} from "./client/content-search/panel";
+import { requestContentSearch } from "./client/content-search/state";
 import { CleanupDialog } from "./client/child-threads/dialog";
 import {
   PREVIEW_POPUP,
@@ -50,7 +59,9 @@ export default definePluginApp((app) => {
     icon: ICONS.chart,
     component: HistoryPanel,
   });
-  // File content opens in bb's native preview.
+  // File content opens in bb's native preview. Each panel registers in a
+  // thread and on the New thread screen under one ID, so its command opens
+  // it on both.
   app.slots.threadPanelAction({
     id: FILE_EXPLORER_ACTION,
     title: "Explorer",
@@ -58,12 +69,46 @@ export default definePluginApp((app) => {
     component: FileExplorerPanel,
     layout: "flush",
   });
+  app.slots.experimental_newThreadPanelAction({
+    id: FILE_EXPLORER_ACTION,
+    title: "Explorer",
+    icon: ICONS.folder,
+    component: NewThreadExplorerPanel,
+    layout: "flush",
+  });
+  app.slots.threadPanelAction({
+    id: CONTENT_SEARCH_ACTION,
+    title: "Search",
+    icon: ICONS.search,
+    component: ContentSearchPanel,
+    layout: "flush",
+  });
+  app.slots.experimental_newThreadPanelAction({
+    id: CONTENT_SEARCH_ACTION,
+    title: "Search",
+    icon: ICONS.search,
+    component: NewThreadContentSearchPanel,
+    layout: "flush",
+  });
   app.commands.register({
     id: "open-file-explorer",
     title: "Explorer: browse files",
-    isAvailable: ({ threadId }) => threadId !== null,
+    defaultShortcut: { key: "b", mod: true },
+    isAvailable: ({ threadId, projectId }) =>
+      threadId !== null || projectId !== null,
     run: ({ openPanel }) => {
       openPanel({ actionId: FILE_EXPLORER_ACTION, title: "Explorer" });
+    },
+  });
+  app.commands.register({
+    id: "search-file-contents",
+    title: "Search: find in files",
+    defaultShortcut: { key: "f", mod: true, shift: true },
+    isAvailable: ({ threadId, projectId }) =>
+      threadId !== null || projectId !== null,
+    run: ({ threadId, projectId, openPanel }) => {
+      requestContentSearch(threadId ?? `project:${projectId ?? ""}`);
+      openPanel({ actionId: CONTENT_SEARCH_ACTION, title: "Search" });
     },
   });
   app.slots.experimental_threadAction(cleanupAction);

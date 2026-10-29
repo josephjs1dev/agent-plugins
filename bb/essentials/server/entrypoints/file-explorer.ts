@@ -1,16 +1,23 @@
 import type { BbPluginApi, ExperimentalHostClient } from "@get-bb/plugin-sdk";
+import type { ExplorerRoot, ExplorerTarget } from "../../shared/file-explorer";
 import type { Handlers } from "./contract";
 import type { HostContract } from "./host-contract";
 
 type Sdk = BbPluginApi["sdk"];
 
-/** The server and host deadline of one file read, Git read, or delete. */
+/** A resolved root, with the host and path that stay on the server. */
+type Root = ExplorerRoot & { hostId: string; path: string };
+
+/** The server and host deadline of one file read, search, Git read, or delete. */
 const DEADLINE_MS = 15_000;
+
+const publicRoot = ({ key, preview }: Root): ExplorerRoot => ({ key, preview });
 
 /**
  * Lists, searches, reads the Git status of, and deletes the files of a
- * thread's workspace on the host that owns it. The root and host come from the thread's environment, never from the
- * app. bb-only: Paseo has a native file browser.
+ * thread's workspace, or of a project's default checkout, on the host that
+ * owns it. The root and host come from bb, never from the app. bb-only:
+ * Paseo has a native file browser.
  */
 export function fileExplorerHandlers({
   sdk,
@@ -23,6 +30,7 @@ export function fileExplorerHandlers({
     Handlers,
     | "file_explorer.list"
     | "file_explorer.search"
+    | "file_explorer.content"
     | "file_explorer.git_status"
     | "file_explorer.delete"
   >;
@@ -30,9 +38,42 @@ export function fileExplorerHandlers({
 } {
   const lifecycle = new AbortController();
   const searches = new Map<string, AbortController>();
+  const deadline = () =>
+    AbortSignal.any([lifecycle.signal, AbortSignal.timeout(DEADLINE_MS)]);
+  const options = (root: Root, signal: AbortSignal) => ({
+    hostId: root.hostId,
+    signal,
+    timeoutMs: DEADLINE_MS,
+  });
 
-  async function workspace(threadId: string, signal: AbortSignal) {
-    const thread = await sdk().threads.get({ threadId, signal });
+  async function resolveRoot(
+    target: ExplorerTarget,
+    signal: AbortSignal,
+  ): Promise<Root | null> {
+    if (target.kind === "project") {
+      const project = await sdk().projects.get({
+        projectId: target.projectId,
+        signal,
+      });
+      const source =
+        project.sources.find((candidate) => candidate.isDefault) ??
+        project.sources[0];
+      if (!source) {
+        return null;
+      }
+
+      return {
+        key: `source:${source.id}`,
+        hostId: source.hostId,
+        path: source.path,
+        preview: { kind: "host", hostId: source.hostId, path: source.path },
+      };
+    }
+
+    const thread = await sdk().threads.get({
+      threadId: target.threadId,
+      signal,
+    });
     if (thread.deletedAt !== null || !thread.environmentId) {
       return null;
     }
@@ -46,47 +87,59 @@ export function fileExplorerHandlers({
     }
 
     return {
-      id: environment.id,
+      key: environment.id,
       hostId: environment.hostId,
       path: environment.path,
+      preview: { kind: "workspace", environmentId: environment.id },
     };
+  }
+
+  /** Runs `search`, and cancels the older search under the same key. */
+  async function latest<T>(
+    key: string,
+    search: (signal: AbortSignal) => Promise<T>,
+  ): Promise<T> {
+    searches.get(key)?.abort();
+    const controller = new AbortController();
+    searches.set(key, controller);
+    try {
+      return await search(
+        AbortSignal.any([
+          lifecycle.signal,
+          controller.signal,
+          AbortSignal.timeout(DEADLINE_MS),
+        ]),
+      );
+    } finally {
+      if (searches.get(key) === controller) {
+        searches.delete(key);
+      }
+    }
   }
 
   return {
     handlers: {
-      async "file_explorer.list"({ threadId, ...input }) {
-        const signal = AbortSignal.any([
-          lifecycle.signal,
-          AbortSignal.timeout(DEADLINE_MS),
-        ]);
-        const environment = await workspace(threadId, signal);
-        if (!environment) {
-          return { environmentId: null, entries: [], next: null };
+      async "file_explorer.list"({ target, ...input }) {
+        const signal = deadline();
+        const root = await resolveRoot(target, signal);
+        if (!root) {
+          return { root: null, entries: [], next: null };
         }
 
         const page = await host.call(
           "file_explorer.directory",
-          { rootPath: environment.path, ...input },
-          { hostId: environment.hostId, signal, timeoutMs: DEADLINE_MS },
+          { rootPath: root.path, ...input },
+          options(root, signal),
         );
 
-        return { ...page, environmentId: environment.id };
+        return { ...page, root: publicRoot(root) };
       },
-      async "file_explorer.search"({ threadId, sessionId, ...input }) {
-        const key = JSON.stringify([threadId, sessionId]);
-        searches.get(key)?.abort();
-        const controller = new AbortController();
-        searches.set(key, controller);
-        const signal = AbortSignal.any([
-          lifecycle.signal,
-          controller.signal,
-          AbortSignal.timeout(DEADLINE_MS),
-        ]);
-        try {
-          const environment = await workspace(threadId, signal);
-          if (!environment) {
+      "file_explorer.search": ({ target, sessionId, ...input }) =>
+        latest(JSON.stringify(["files", target, sessionId]), async (signal) => {
+          const root = await resolveRoot(target, signal);
+          if (!root) {
             return {
-              environmentId: null,
+              root: null,
               entries: [],
               truncated: false,
               limited: false,
@@ -95,26 +148,42 @@ export function fileExplorerHandlers({
 
           const result = await host.call(
             "file_explorer.search",
-            { rootPath: environment.path, ...input },
-            { hostId: environment.hostId, signal, timeoutMs: DEADLINE_MS },
+            { rootPath: root.path, ...input },
+            options(root, signal),
           );
 
-          return { ...result, environmentId: environment.id };
-        } finally {
-          if (searches.get(key) === controller) {
-            searches.delete(key);
-          }
-        }
-      },
-      async "file_explorer.git_status"({ threadId }) {
-        const signal = AbortSignal.any([
-          lifecycle.signal,
-          AbortSignal.timeout(DEADLINE_MS),
-        ]);
-        const environment = await workspace(threadId, signal);
-        if (!environment) {
+          return { ...result, root: publicRoot(root) };
+        }),
+      "file_explorer.content": ({ target, sessionId, ...input }) =>
+        latest(
+          JSON.stringify(["content", target, sessionId]),
+          async (signal) => {
+            const root = await resolveRoot(target, signal);
+            if (!root) {
+              return {
+                root: null,
+                files: [],
+                matches: 0,
+                truncated: false,
+                limited: false,
+              };
+            }
+
+            const result = await host.call(
+              "file_explorer.content",
+              { rootPath: root.path, ...input },
+              options(root, signal),
+            );
+
+            return { ...result, root: publicRoot(root) };
+          },
+        ),
+      async "file_explorer.git_status"({ target }) {
+        const signal = deadline();
+        const root = await resolveRoot(target, signal);
+        if (!root) {
           return {
-            environmentId: null,
+            root: null,
             repository: false,
             entries: [],
             truncated: false,
@@ -123,26 +192,27 @@ export function fileExplorerHandlers({
 
         const status = await host.call(
           "file_explorer.git_status",
-          { rootPath: environment.path },
-          { hostId: environment.hostId, signal, timeoutMs: DEADLINE_MS },
+          { rootPath: root.path },
+          options(root, signal),
         );
 
-        return { ...status, environmentId: environment.id };
+        return { ...status, root: publicRoot(root) };
       },
-      async "file_explorer.delete"({ threadId, entry }) {
-        const signal = AbortSignal.any([
-          lifecycle.signal,
-          AbortSignal.timeout(DEADLINE_MS),
-        ]);
-        const environment = await workspace(threadId, signal);
-        if (!environment) {
-          throw new Error("This thread has no live workspace.");
+      async "file_explorer.delete"({ target, rootKey, entry }) {
+        const signal = deadline();
+        const root = await resolveRoot(target, signal);
+        if (!root) {
+          throw new Error("This workspace is not available.");
+        }
+
+        if (root.key !== rootKey) {
+          throw new Error("The workspace changed. Refresh the Explorer.");
         }
 
         return host.call(
           "file_explorer.delete",
-          { rootPath: environment.path, entry },
-          { hostId: environment.hostId, signal, timeoutMs: DEADLINE_MS },
+          { rootPath: root.path, entry },
+          options(root, signal),
         );
       },
     },

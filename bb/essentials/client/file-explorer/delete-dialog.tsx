@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import type { FileEntry } from "essentials/file-explorer/browser";
+import type { ExplorerTarget } from "../../shared/file-explorer";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -12,33 +13,38 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { errorMessage, useCall } from "../data";
+import type { MenuTarget } from "./entry-menu";
 
-/** Asks before it permanently deletes `entry`, then deletes it on the host. */
+/**
+ * Asks before it permanently deletes the menu's entry, then deletes it on
+ * the host, in the root that the user saw.
+ */
 export function DeleteDialog({
-  threadId,
-  entry,
+  target,
+  deleting,
   onClose,
   onDeleted,
 }: {
-  threadId: string;
-  entry: FileEntry | null;
+  target: ExplorerTarget;
+  deleting: MenuTarget | null;
   onClose(this: void): void;
   onDeleted(this: void, entry: FileEntry): void;
 }) {
   const call = useCall();
   const [busy, setBusy] = useState(false);
-  if (!entry) {
+  if (!deleting) {
     return null;
   }
+  const { entry, rootKey } = deleting;
   const folder = entry.kind === "directory";
   const name = entry.path.split("/").at(-1) ?? entry.path;
 
-  async function remove(target: FileEntry) {
+  async function remove(removed: FileEntry) {
     setBusy(true);
     try {
-      await call("file_explorer.delete", { threadId, entry: target });
-      toast.success(`Deleted ${target.path}.`);
-      onDeleted(target);
+      await call("file_explorer.delete", { target, rootKey, entry: removed });
+      toast.success(`Deleted ${removed.path}.`);
+      onDeleted(removed);
     } catch (cause) {
       toast.error(errorMessage(cause));
     } finally {

@@ -36,18 +36,29 @@ export const fileEntrySchema = z.object({
 export type FileEntry = z.infer<typeof fileEntrySchema>;
 
 /** The workspace root is the empty folder. */
-const folderSchema = z.union([z.literal(""), relativeFilePath]);
+export const folderSchema = z.union([z.literal(""), relativeFilePath]);
 
 /** Lists entries whose name starts with a dot. Hiding one hides its contents. */
 const showHiddenSchema = z.boolean();
 
+/**
+ * Lists entries that Git ignores. A tracked file is never ignored, and
+ * nothing is ignored outside a Git work tree.
+ */
+const showIgnoredSchema = z.boolean();
+
 /** A dotfile or dot-folder, such as `.env` or `.github`. */
 export const isHiddenName = (name: string) => name.startsWith(".");
+
+/** Whether a segment of `path`, relative to the root, is hidden. */
+export const isHiddenPath = (path: string) =>
+  path.split("/").some(isHiddenName);
 
 export const directoryRequestSchema = z
   .object({
     folder: folderSchema,
     showHidden: showHiddenSchema,
+    showIgnored: showIgnoredSchema,
     /** Keeps entries whose name contains this text, case-insensitively. */
     filter: z.string().max(200),
     /** The last entry of the previous page, or null for the first page. */
@@ -111,6 +122,7 @@ export const searchRequestSchema = z
   .object({
     folder: folderSchema,
     showHidden: showHiddenSchema,
+    showIgnored: showIgnoredSchema,
     query: z.string().trim().min(1).max(200),
   })
   .strict();

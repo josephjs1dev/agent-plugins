@@ -78,6 +78,9 @@ bb's vendored components in bb.
 | Context Reminder preview                             | done: `/context-reminder demo`             | done: composer `+` menu                                 |
 | Archive or delete idle child threads                 | n/a: Paseo does it natively                | done: thread menu, adapter-only                         |
 | Workspace file explorer, search, Git status, delete  | n/a: Paseo has a native file browser       | done: thread panel, host entry reads the checkout       |
+| Explorer ignored-file filter                         | n/a: Paseo has a native file browser       | done: host asks Git, before paging                      |
+| File content search                                  | n/a: Paseo has a native file browser       | done: Search panel, ripgrep on the host                 |
+| Explorer and Search before a thread exists           | n/a: Paseo has a native file browser       | done: New thread panels, project's default checkout     |
 
 Child-thread cleanup lives in the bb adapter only, because Paseo already
 archives and deletes child agents natively.

@@ -5,6 +5,7 @@ import {
   type GitStatus,
 } from "essentials/file-explorer/git";
 import { cn } from "@/lib/utils";
+import type { ExplorerRoot, ExplorerTarget } from "../../shared/file-explorer";
 import { useQuery } from "../data";
 import {
   ErrorNote,
@@ -21,30 +22,35 @@ import { menuAtPointer, menuFromKey, type OpenMenu } from "./entry-menu";
 
 /** Files in `folder` and its subfolders whose path matches `query`. */
 export function SearchResults({
-  threadId,
+  target,
+  missing,
   folder,
   query,
   sessionId,
   showHidden,
+  showIgnored,
   git,
   onOpen,
   onScope,
   onMenu,
 }: {
-  threadId: string;
+  target: ExplorerTarget;
+  missing: string;
   folder: string;
   query: string;
   sessionId: string;
-  onOpen(this: void, entry: FileEntry, environmentId: string): void;
+  onOpen(this: void, entry: FileEntry, root: ExplorerRoot): void;
   onScope(this: void, folder: string): void;
   showHidden: boolean;
+  showIgnored: boolean;
   git: GitIndex | null;
   onMenu: OpenMenu;
 }) {
   const result = useQuery("file_explorer.search", {
-    threadId,
+    target,
     folder,
     showHidden,
+    showIgnored,
     query,
     sessionId,
   });
@@ -66,11 +72,11 @@ export function SearchResults({
   if (!data) {
     return <Searching />;
   }
-  const environmentId = data.environmentId;
-  if (!environmentId) {
+  const root = data.root;
+  if (!root) {
     return (
       <div className="p-3">
-        <Muted>This thread has no live workspace.</Muted>
+        <Muted>{missing}</Muted>
       </div>
     );
   }
@@ -111,8 +117,9 @@ export function SearchResults({
           <ResultRow
             key={entry.path}
             entry={entry}
+            rootKey={root.key}
             status={git ? gitStatusOf(git, entry) : null}
-            onOpen={() => onOpen(entry, environmentId)}
+            onOpen={() => onOpen(entry, root)}
             onScope={onScope}
             onMenu={onMenu}
           />
@@ -132,12 +139,14 @@ export function Searching() {
 
 function ResultRow({
   entry,
+  rootKey,
   status,
   onOpen,
   onScope,
   onMenu,
 }: {
   entry: FileEntry;
+  rootKey: string;
   status: GitStatus | null;
   onOpen(this: void): void;
   onScope(this: void, folder: string): void;
@@ -146,9 +155,9 @@ function ResultRow({
   return (
     <li
       className={cn("group flex min-w-0 items-center rounded", hoverHighlight)}
-      onContextMenu={menuAtPointer(entry, onMenu)}
+      onContextMenu={menuAtPointer(entry, rootKey, onMenu)}
       onKeyDown={(event) => {
-        menuFromKey(event, entry, onMenu);
+        menuFromKey(event, entry, rootKey, onMenu);
       }}
     >
       <button

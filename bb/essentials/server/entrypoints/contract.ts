@@ -17,6 +17,10 @@ import {
   searchResultSchema,
   fileEntrySchema,
 } from "essentials/file-explorer/browser";
+import {
+  contentSearchRequestSchema,
+  contentSearchResultSchema,
+} from "essentials/file-explorer/content";
 import { gitStatusResultSchema } from "essentials/file-explorer/git";
 import {
   characterSchema,
@@ -29,6 +33,10 @@ import {
   planInputSchema,
   runInputSchema,
 } from "../../shared/child-threads";
+import {
+  explorerRootSchema,
+  explorerTargetSchema,
+} from "../../shared/file-explorer";
 
 interface Typed {
   "~standard": { types?: { input: unknown; output: unknown } | undefined };
@@ -62,8 +70,12 @@ export const historyInput = readHistoryDefinition.input.omit({
   scope: true,
 });
 
-/** The thread's environment, or null when it has no live workspace. */
-const environmentId = z.string().nullable();
+/** The panel's thread or project; the server resolves its root. */
+const target = { target: explorerTargetSchema };
+/** The resolved root, or null when the target has no live checkout. */
+const root = { root: explorerRootSchema.nullable() };
+/** One panel; a new search cancels its older ones of the same kind. */
+const sessionId = z.string().min(1).max(128);
 
 export const reminderReadingSchema = z.object({
   usedTokens: z.int().min(0),
@@ -139,28 +151,35 @@ export const essentialsContract = defineRpcContract({
     output: cleanupResultSchema,
   }),
   // bb-only: Paseo has a native file browser. The server resolves the root
-  // from the thread, so the app never names a host path.
+  // from the thread or project, so the app never names a host path.
   "file_explorer.list": method({
-    input: directoryRequestSchema.extend({ threadId }).strict(),
-    output: directoryPageSchema.extend({ environmentId }),
+    input: directoryRequestSchema.extend(target).strict(),
+    output: directoryPageSchema.extend(root),
   }),
   "file_explorer.search": method({
-    input: searchRequestSchema
-      .extend({
-        threadId,
-        /** One explorer; a new search cancels its older ones. */
-        sessionId: z.string().min(1).max(128),
-      })
-      .strict(),
-    output: searchResultSchema.extend({ environmentId }),
+    input: searchRequestSchema.extend({ ...target, sessionId }).strict(),
+    output: searchResultSchema.extend(root),
+  }),
+  "file_explorer.content": method({
+    input: contentSearchRequestSchema.extend({ ...target, sessionId }).strict(),
+    output: contentSearchResultSchema.extend(root),
   }),
   "file_explorer.git_status": method({
-    input: thread,
-    output: gitStatusResultSchema.extend({ environmentId }),
+    input: z.object(target).strict(),
+    output: gitStatusResultSchema.extend(root),
   }),
-  /** Permanently deletes a file, or a folder and its contents. */
+  /**
+   * Permanently deletes a file, or a folder and its contents. `rootKey` is
+   * the root the user saw, so a changed root fails instead of deleting there.
+   */
   "file_explorer.delete": method({
-    input: thread.extend({ entry: fileEntrySchema }).strict(),
+    input: z
+      .object({
+        ...target,
+        rootKey: explorerRootSchema.shape.key,
+        entry: fileEntrySchema,
+      })
+      .strict(),
     output: z.object({ path: z.string() }),
   }),
 });

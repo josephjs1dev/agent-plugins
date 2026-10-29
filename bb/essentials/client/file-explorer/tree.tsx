@@ -1,6 +1,7 @@
 import type { KeyboardEvent } from "react";
 import type { FileEntry } from "essentials/file-explorer/browser";
 import { gitStatusOf, type GitIndex } from "essentials/file-explorer/git";
+import type { ExplorerRoot, ExplorerTarget } from "../../shared/file-explorer";
 import { cn } from "@/lib/utils";
 import { useQuery } from "../data";
 import {
@@ -18,10 +19,12 @@ import { menuAtPointer, menuFromKey, type OpenMenu } from "./entry-menu";
 import { pageKey } from "./view-state";
 
 export interface TreeProps {
-  threadId: string;
+  target: ExplorerTarget;
+  /** The note shown when the target has no live checkout. */
+  missing: string;
   /** Scopes search to `folder` and its subfolders. */
   onScope(this: void, folder: string): void;
-  onOpen(this: void, entry: FileEntry, environmentId: string): void;
+  onOpen(this: void, entry: FileEntry, root: ExplorerRoot): void;
   selected: string | null;
   expanded: ReadonlySet<string>;
   onToggle(this: void, folder: string): void;
@@ -29,6 +32,7 @@ export interface TreeProps {
   pages: readonly string[];
   onPage(this: void, key: string): void;
   showHidden: boolean;
+  showIgnored: boolean;
   /** Null outside a Git work tree or before the first status read. */
   git: GitIndex | null;
   onMenu: OpenMenu;
@@ -59,22 +63,22 @@ function moveInTree(event: KeyboardEvent<HTMLLIElement>) {
 
 function TreeNode({
   entry,
-  environmentId,
+  root,
   ...props
-}: TreeProps & { entry: FileEntry; environmentId: string }) {
+}: TreeProps & { entry: FileEntry; root: ExplorerRoot }) {
   const expanded = props.expanded.has(entry.path);
   const directory = entry.kind === "directory";
   const selected = !directory && props.selected === entry.path;
   const name = entry.path.split("/").at(-1) ?? entry.path;
   const status = props.git ? gitStatusOf(props.git, entry) : null;
   const activate = () =>
-    directory ? props.onToggle(entry.path) : props.onOpen(entry, environmentId);
+    directory ? props.onToggle(entry.path) : props.onOpen(entry, root);
   const onKeyDown = (event: KeyboardEvent<HTMLLIElement>) => {
     if (event.target !== event.currentTarget) {
       return;
     }
     moveInTree(event);
-    if (menuFromKey(event, entry, props.onMenu)) {
+    if (menuFromKey(event, entry, root.key, props.onMenu)) {
       return;
     }
     const item = event.currentTarget;
@@ -117,7 +121,7 @@ function TreeNode({
           hoverHighlight,
           selected && "bg-state-active",
         )}
-        onContextMenu={menuAtPointer(entry, props.onMenu)}
+        onContextMenu={menuAtPointer(entry, root.key, props.onMenu)}
       >
         <button
           type="button"
@@ -164,12 +168,7 @@ function TreeNode({
       </div>
       {directory && expanded ? (
         <ul role="group" className="ml-[11px] border-l border-border/60 pl-2">
-          <TreePage
-            {...props}
-            folder={entry.path}
-            after={null}
-            environmentId={environmentId}
-          />
+          <TreePage {...props} folder={entry.path} after={null} root={root} />
         </ul>
       ) : null}
     </li>
@@ -178,25 +177,26 @@ function TreeNode({
 
 /**
  * One page of a folder's entries, then a **Load more** button that mounts the
- * next page. A page from another environment than its parent asks for a
- * refresh instead of mixing two checkouts.
+ * next page. A page from another root than its parent asks for a refresh
+ * instead of mixing two checkouts.
  */
 export function TreePage({
   folder,
   after,
-  environmentId,
+  root,
   ...props
 }: TreeProps & {
   folder: string;
   after: FileEntry | null;
-  environmentId?: string;
+  root?: ExplorerRoot;
 }) {
   const key = pageKey(folder, after);
   const more = props.pages.includes(key);
   const page = useQuery("file_explorer.list", {
-    threadId: props.threadId,
+    target: props.target,
     folder,
     showHidden: props.showHidden,
+    showIgnored: props.showIgnored,
     filter: "",
     after,
   });
@@ -231,15 +231,15 @@ export function TreePage({
       </li>
     );
   }
-  const current = data.environmentId;
+  const current = data.root;
   if (!current) {
     return (
       <li role="none" className="px-3 py-4">
-        <Muted>This thread has no live workspace.</Muted>
+        <Muted>{props.missing}</Muted>
       </li>
     );
   }
-  if (environmentId && environmentId !== current) {
+  if (root && root.key !== current.key) {
     return (
       <li role="none" className="px-3 py-2">
         <Muted>Workspace changed. Refresh to reload.</Muted>
@@ -249,12 +249,7 @@ export function TreePage({
   return (
     <>
       {data.entries.map((entry) => (
-        <TreeNode
-          key={entry.path}
-          {...props}
-          entry={entry}
-          environmentId={current}
-        />
+        <TreeNode key={entry.path} {...props} entry={entry} root={current} />
       ))}
       {data.entries.length === 0 ? (
         <li role="none" className="px-7 py-1.5">
@@ -267,12 +262,7 @@ export function TreePage({
         </li>
       ) : null}
       {data.next && more ? (
-        <TreePage
-          {...props}
-          folder={folder}
-          after={data.next}
-          environmentId={current}
-        />
+        <TreePage {...props} folder={folder} after={data.next} root={current} />
       ) : null}
       {data.next && !more ? (
         <li role="none">

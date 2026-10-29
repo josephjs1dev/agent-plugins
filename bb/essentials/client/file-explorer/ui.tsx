@@ -15,7 +15,11 @@ type GlyphName =
   | "collapse"
   | "copy"
   | "eye"
-  | "eyeOff";
+  | "eyeOff"
+  | "ignored"
+  | "ignoredOff"
+  | "find"
+  | "filter";
 
 const GLYPHS: Record<GlyphName, ReactNode> = {
   folder: <path d="M2.5 6V4.5h5l2 2h8V16h-15Z" />,
@@ -54,6 +58,23 @@ const GLYPHS: Record<GlyphName, ReactNode> = {
       <path d="m3 3 14 14" />
     </>
   ),
+  // A dashed file: an entry that Git ignores.
+  ignored: <path d="M5 2.5h6l4 4v11H5Z" strokeDasharray="2 1.6" />,
+  ignoredOff: (
+    <>
+      <path d="M5 2.5h6l4 4v11H5Z" strokeDasharray="2 1.6" />
+      <path d="m3 3 14 14" />
+    </>
+  ),
+  // Lines of text under a magnifier: search file contents.
+  find: (
+    <>
+      <path d="M3 5h9M3 9h6M3 13h4" />
+      <circle cx="13" cy="12" r="3" />
+      <path d="m15.2 14.2 2.3 2.3" />
+    </>
+  ),
+  filter: <path d="M3 4.5h14l-5.5 6.5v5l-3 1.5V11Z" />,
 };
 
 /** A 20 px line glyph that follows the text color. */

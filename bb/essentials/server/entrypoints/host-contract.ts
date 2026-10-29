@@ -7,6 +7,10 @@ import {
   searchResultSchema,
   fileEntrySchema,
 } from "essentials/file-explorer/browser";
+import {
+  contentSearchRequestSchema,
+  contentSearchResultSchema,
+} from "essentials/file-explorer/content";
 import { gitStatusResultSchema } from "essentials/file-explorer/git";
 import { method } from "./contract";
 
@@ -29,6 +33,10 @@ export const hostContract = defineRpcContract({
   "file_explorer.search": method({
     input: searchRequestSchema.extend({ rootPath }).strict(),
     output: searchResultSchema,
+  }),
+  "file_explorer.content": method({
+    input: contentSearchRequestSchema.extend({ rootPath }).strict(),
+    output: contentSearchResultSchema,
   }),
   "file_explorer.git_status": method({
     input: z.object({ rootPath }).strict(),

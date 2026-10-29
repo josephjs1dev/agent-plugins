@@ -1,9 +1,13 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
+import { z } from "zod";
 import {
+  patchStoredView,
   readShowHidden,
+  readShowIgnored,
   readView,
   writeShowHidden,
+  writeShowIgnored,
   writeView,
   type ExplorerView,
 } from "../client/file-explorer/view-state";
@@ -84,4 +88,41 @@ void test("the hidden-files preference defaults to shown and persists", () => {
   storage("refuse", "localStorage");
   writeShowHidden(true);
   assert.equal(readShowHidden(), true);
+});
+
+void test("a patch from another panel updates the stored view", () => {
+  const items = new Map<string, string>();
+  storage(items);
+  const store = {
+    prefix: "essentials.test.v1:",
+    schema: z.object({ folder: z.string(), query: z.string() }),
+    empty: () => ({ folder: "", query: "" }),
+  };
+  patchStoredView(store, "project:p", { folder: "src" });
+  assert.deepEqual(
+    JSON.parse(items.get("essentials.test.v1:project:p") ?? ""),
+    {
+      folder: "src",
+      query: "",
+    },
+  );
+  patchStoredView(store, "project:p", { query: "needle" });
+  assert.deepEqual(
+    JSON.parse(items.get("essentials.test.v1:project:p") ?? ""),
+    {
+      folder: "src",
+      query: "needle",
+    },
+  );
+});
+
+void test("the ignored-files preference is separate from the hidden one", () => {
+  const items = new Map<string, string>();
+  storage(items, "localStorage");
+  assert.equal(readShowIgnored(), true);
+  writeShowIgnored(false);
+  assert.equal(items.get("essentials.file-explorer.show-ignored"), "false");
+  assert.equal(readShowIgnored(), false);
+  assert.equal(readShowHidden(), true);
+  writeShowIgnored(true);
 });
