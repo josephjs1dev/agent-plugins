@@ -22,6 +22,9 @@ import {
 } from "./client/content-search/panel";
 import { requestContentSearch } from "./client/content-search/state";
 import { CleanupDialog } from "./client/child-threads/dialog";
+import { CleanerSync } from "./client/cleaner/dialog";
+import { CleanerIcon } from "./client/cleaner/icon";
+import { openCleaner } from "./client/cleaner/state";
 import {
   PREVIEW_POPUP,
   ReminderBanner,
@@ -29,6 +32,29 @@ import {
 } from "./client/context-reminder/banner";
 
 export default definePluginApp((app) => {
+  // The registered broom shadows the manifest glyph to add its notification
+  // dot. The footer action and the command open the dialog that CleanerSync
+  // renders.
+  app.experimental_icons.register({
+    name: ICONS.cleaner,
+    component: CleanerIcon,
+  });
+  app.experimental_sidebarFooter.register({
+    kind: "action",
+    id: "cleaner",
+    label: "Cleaner",
+    icon: ICONS.cleaner,
+    onActivate: openCleaner,
+  });
+  app.commands.register({
+    id: "cleaner",
+    title: "Cleaner: review old threads",
+    run: openCleaner,
+  });
+  app.slots.experimental_appOverlay({
+    id: "cleaner",
+    component: CleanerSync,
+  });
   app.slots.navPanel({
     id: "usage-history",
     title: "Usage history",

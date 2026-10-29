@@ -36,7 +36,9 @@ the work to completion. It stores its data in `$CONDUCTOR_HOME` (default
 `~/.conductor`) on every host.
 
 Essentials adds subscription limits, token history, workspace usage, coding
-CLI maintenance, context-window reminders, and, on bb, a workspace file explorer and content search. It stores its data in
+CLI maintenance, context-window reminders, and, on bb, a Cleaner for old
+threads and their provider sessions, a workspace file explorer, and content
+search. It stores its data in
 `$ESSENTIALS_HOME` (default `~/.essentials`) on every host.
 
 [PARITY.md](PARITY.md) tracks what each host adapter supports.

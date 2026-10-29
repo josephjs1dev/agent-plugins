@@ -9,4 +9,5 @@ export const ICONS = {
   trash: "essentials/trash",
   folder: "essentials/folder",
   search: "essentials/search",
+  cleaner: "essentials/cleaner",
 } as const;

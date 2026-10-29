@@ -12,6 +12,11 @@ import {
   contentSearchResultSchema,
 } from "essentials/file-explorer/content";
 import { gitStatusResultSchema } from "essentials/file-explorer/git";
+import {
+  cleanupResultSchema,
+  cleanupTargetSchema,
+  nativeSessionSchema,
+} from "essentials/cleaner/contracts";
 import { method } from "./contract";
 
 /** The environment's checkout on its host, resolved by the server. */
@@ -26,6 +31,27 @@ const rootPath = z
  * and the server calls it with the environment's `hostId`.
  */
 export const hostContract = defineRpcContract({
+  /** Creates or checks bb's thread-storage directory. A symlink never counts. */
+  "cleaner.observe_storage": method({
+    input: z.object({ storagePath: rootPath, create: z.boolean() }).strict(),
+    output: z.object({ exists: z.boolean() }),
+  }),
+  /** Deletes a deleted thread's native sessions once bb removed its storage. */
+  "cleaner.delete_sessions": method({
+    input: z
+      .object({ target: cleanupTargetSchema, codexBin: rootPath.nullable() })
+      .strict(),
+    output: cleanupResultSchema,
+  }),
+  /** Removes a deleted Codex session's entry from the desktop app's sidebar. */
+  "cleaner.delete_codex_catalog": method({
+    input: z
+      .object({
+        session: nativeSessionSchema.extend({ provider: z.literal("codex") }),
+      })
+      .strict(),
+    output: z.object({ removed: z.int().min(0) }),
+  }),
   "file_explorer.directory": method({
     input: directoryRequestSchema.extend({ rootPath }).strict(),
     output: directoryPageSchema,

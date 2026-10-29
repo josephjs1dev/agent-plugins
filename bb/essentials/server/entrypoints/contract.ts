@@ -28,6 +28,11 @@ import {
   reminderNoticeSchema,
 } from "essentials/context-reminder/contracts";
 import {
+  cleanerCandidateSchema,
+  cleanerDaysSchema,
+  cleanerStatusSchema,
+} from "essentials/cleaner/contracts";
+import {
   cleanupPlanSchema,
   cleanupResultSchema,
   planInputSchema,
@@ -149,6 +154,41 @@ export const essentialsContract = defineRpcContract({
   "child_threads.run": method({
     input: runInputSchema,
     output: cleanupResultSchema,
+  }),
+  // bb-only: the sidebar Cleaner for old threads and their provider sessions.
+  "cleaner.status": method({
+    input: z.object({}).strict(),
+    output: cleanerStatusSchema,
+  }),
+  /**
+   * Scans, then issues a single-use review token for the first 100
+   * candidates. `more` means some candidates were not shown.
+   */
+  "cleaner.preview": method({
+    input: z.object({}).strict(),
+    output: z.object({
+      token: z.string(),
+      candidates: z.array(cleanerCandidateSchema),
+      status: cleanerStatusSchema,
+      more: z.boolean(),
+    }),
+  }),
+  /** Deletes reviewed candidates. Each is checked again, and skipped with a reason when it changed. */
+  "cleaner.clean": method({
+    input: z
+      .object({
+        token: z.string().min(1).max(128),
+        threadIds: z.array(threadId).min(1).max(100),
+      })
+      .strict(),
+    output: z.object({
+      deleted: z.array(z.string()),
+      skipped: z.array(z.object({ id: z.string(), reason: z.string() })),
+    }),
+  }),
+  "cleaner.set_days": method({
+    input: z.object({ days: cleanerDaysSchema }).strict(),
+    output: cleanerStatusSchema,
   }),
   // bb-only: Paseo has a native file browser. The server resolves the root
   // from the thread or project, so the app never names a host path.

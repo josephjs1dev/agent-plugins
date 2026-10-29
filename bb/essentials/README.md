@@ -1,8 +1,8 @@
 # Essentials for bb
 
 Experimental. Essentials adds subscription limits, token history,
-context-window reminders, a workspace file explorer, and file content
-search to bb. This adapter runs the Essentials core from `packages/essentials` on the bb plugin
+context-window reminders, a Cleaner for old threads and their provider
+sessions, a workspace file explorer, and file content search to bb. This adapter runs the Essentials core from `packages/essentials` on the bb plugin
 SDK. [PARITY.md](../../PARITY.md) lists what it supports. The
 [Paseo README](../../paseo/essentials/README.md) describes each feature, the
 provider logins, and the data sources in detail.
@@ -35,6 +35,13 @@ provider logins, and the data sources in detail.
 - **Child-thread cleanup.** A thread that has child threads gets **Clean up
   child threads** in its thread menu. **Archive idle child threads** and
   **Delete idle child threads** list the targets and ask for confirmation.
+- **Cleaner.** The broom in the sidebar footer, or **Cleaner: review old
+  threads** in the palette, opens a dialog of old threads to delete. A thread
+  is old when it has no updates for **Older than** days (1 to 30, default 7).
+  A dot on the broom marks old threads or a cleanup problem. Select threads,
+  choose **Review deletion**, then confirm. With **Cleaner: delete provider
+  sessions** on, deleting a Claude Code or Codex thread also deletes its
+  native session, from Cleaner or from bb's own Delete.
 - **Explorer.** Open **Explorer** from the thread's panel actions, or run
   **Explorer: browse files** in the palette (default shortcut Cmd+B, Ctrl+B
   on Windows and Linux). It lists the thread's workspace
@@ -97,6 +104,7 @@ provider logins, and the data sources in detail.
 | Provider `claude`            | Provider `claude-code`                                |
 | Archive or delete subagents  | Thread menu: **Clean up child threads**               |
 | Native file browser          | **Explorer** and **Search** panels                    |
+| None                         | **Cleaner** in the sidebar footer                     |
 
 - **No workspace scope.** bb has threads, not workspaces, so this adapter
   leaves out Paseo's workspace usage and always reads host-wide history. The
@@ -115,6 +123,35 @@ provider logins, and the data sources in detail.
   time. When you confirm, Essentials checks the tree again. A thread that
   started work since the check stays. When a thread fails, every thread above
   it stays. One cleanup reads at most 500 threads.
+- **Cleaner.** A candidate is a visible thread that is not pinned, not below
+  a pinned thread, and idle or failed with no background work, queued
+  message, or open question. Every thread that bb deletes with it must
+  qualify too, archived and hidden ones included. Cleaner offers each thread
+  in at most one candidate and shows the first 100. A review expires after 5
+  minutes and works once. Before each deletion, Cleaner stops the threads and
+  checks the tree and its settings again. A thread that changed stays.
+- **Provider session deletion.** bb fires its deletion event before the
+  runtime stops, and history reads fail after it. So, while session deletion
+  is on, Cleaner records each thread's native session IDs and its
+  `CLAUDE_CONFIG_DIR` or `CODEX_HOME` when the session launches and after
+  each turn. A thread deleted before Cleaner recorded it keeps its provider
+  data, and the dialog says so. A background pass on the thread's host waits
+  until bb removes the thread's storage directory, then deletes each session:
+  - Claude Code: the transcript and subagent folder in every project, plus
+    the session's `tasks`, `file-history`, `session-env`, `debug`, and
+    `todos` entries. Cleaner refuses symlinks.
+  - Codex: `codex app-server --stdio` with a `thread/delete` request. Set
+    `ESSENTIALS_CODEX_BIN`, or **Cleaner: Codex binary**, when `codex` is not
+    on the host's `PATH`. Then Cleaner removes the session's local entry from
+    the desktop app's sidebar catalog, `sqlite/codex-dev.db`, in one
+    transaction with `python3` (`ESSENTIALS_PYTHON_BIN` overrides it). It
+    refuses an unexpected schema. A running app can show the entry until it
+    reopens.
+
+  A session that another live thread references stays. Failed stages retry
+  every 30 seconds, and the dialog lists what is pending. The progress lives
+  in the plugin database, so it survives a restart.
+
 - **Explorer.** The plugin's host entry (`host.ts`) reads folders on the
   host that owns the thread's environment, or the project's default
   checkout on the New thread screen. The server resolves the root from the
@@ -164,6 +201,12 @@ The **Context Reminder** page in the navigation rail and the plugin's settings
 page in bb hold the same Context Reminder settings: Show Context Reminder,
 Warn at, Ask to compact at, Remind every, Snooze for, and Assistant. The page
 saves each change at once. The defaults match Paseo's.
+
+The plugin's settings page also holds the Cleaner settings: suggest old
+threads (on), suggest after (7 days), delete provider sessions (off), and
+optional absolute paths for the Claude config directory, the Codex home, and
+the Codex binary. An empty path uses the one recorded for the thread, then
+the host default.
 
 ## Data directory
 

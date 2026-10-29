@@ -3,14 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Subscription limits, token history, workspace usage, context-window reminders, child-thread cleanup, a workspace file explorer, and file content search for bb.",
+  "description": "Subscription limits, token history, workspace usage, context-window reminders, child-thread cleanup, a Cleaner for old threads and their provider sessions, a workspace file explorer, and file content search for bb.",
   "engines": {
     "bb": ">=0.46",
     "bbPluginSdk": ">=0.6.49"
   },
   "bb": {
     "name": "Essentials",
-    "description": "Subscription limits, token history, workspace usage, context-window reminders, child-thread cleanup, a workspace file explorer, and file content search.",
+    "description": "Subscription limits, token history, workspace usage, context-window reminders, child-thread cleanup, a Cleaner for old threads and their provider sessions, a workspace file explorer, and file content search.",
     "branding": {
       "icon": "./assets/icon.svg",
       "experimental_icons": {
@@ -22,7 +22,8 @@
         "archive": "./assets/icons/archive.svg",
         "trash": "./assets/icons/trash.svg",
         "folder": "./assets/icons/folder.svg",
-        "search": "./assets/icons/search.svg"
+        "search": "./assets/icons/search.svg",
+        "cleaner": "./assets/icons/broom.svg"
       }
     },
     "server": "./server.ts",
