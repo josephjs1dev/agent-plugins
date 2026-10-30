@@ -13,15 +13,17 @@ const roots: string[] = [];
 const live = () => new AbortController().signal;
 const hidden = { showHidden: true, showIgnored: false };
 
-function hasGit(): boolean {
+function has(command: string): boolean {
   try {
-    execFileSync("git", ["--version"], { stdio: "ignore" });
+    execFileSync(command, ["--version"], { stdio: "ignore" });
 
     return true;
   } catch {
     return false;
   }
 }
+
+const hasGit = () => has("git");
 
 async function tempDir(): Promise<string> {
   const root = await realpath(
@@ -135,7 +137,7 @@ test("ignored entries take no page slots", { skip: !hasGit() }, async () => {
 
 test(
   "a filename search without ignored files skips ignored paths",
-  { skip: !hasGit() },
+  { skip: !hasGit() || !has("rg") },
   async () => {
     const root = await repository();
     const all = await searchFiles(
@@ -153,6 +155,18 @@ test(
       live(),
     );
     assert.deepEqual(ignoredFolder.entries, []);
+    const nestedIgnored = await searchFiles(
+      root,
+      { ...hidden, folder: "build/deep", query: "needle" },
+      live(),
+    );
+    assert.deepEqual(nestedIgnored.entries, []);
+    const tracked = await searchFiles(
+      root,
+      { ...hidden, folder: "", query: "keep" },
+      live(),
+    );
+    assert.deepEqual(tracked.entries, [{ path: "keep.log", kind: "file" }]);
     const shown = await searchFiles(
       root,
       { ...hidden, showIgnored: true, folder: "", query: "needle" },
@@ -164,7 +178,7 @@ test(
 
 test(
   "nothing is ignored outside a Git work tree",
-  { skip: !hasGit() },
+  { skip: !hasGit() || !has("rg") },
   async () => {
     const root = await tempDir();
     await writeFile(join(root, "a.log"), "");
@@ -188,41 +202,40 @@ test(
   },
 );
 
-test("a failed ignore read reports a generic error", async () => {
-  const root = await tempDir();
-  await writeFile(join(root, "a.log"), "");
-  const failing: RunGit = async () => {
-    throw Object.assign(new Error("fatal: secret detail"), {
-      code: 128,
-      stderr: "fatal: secret detail",
-    });
-  };
+test(
+  "a failed ignore read reports a generic error",
+  { skip: !has("rg") },
+  async () => {
+    const root = await tempDir();
+    await writeFile(join(root, "a.log"), "");
+    const failing: RunGit = async () => {
+      throw Object.assign(new Error("fatal: secret detail"), {
+        code: 128,
+        stderr: "fatal: secret detail",
+      });
+    };
 
-  const rules = gitIgnoreRules(failing);
-  const message =
-    "Git could not read the ignore rules. Show ignored files to browse without them.";
-  await assert.rejects(
-    readDirectory(
-      root,
-      { ...hidden, folder: "", filter: "", after: null },
-      live(),
-      undefined,
-      rules,
-    ),
-    { message },
-  );
-  await assert.rejects(
-    searchFiles(
-      root,
-      { ...hidden, folder: "", query: "a" },
-      live(),
-      undefined,
-      undefined,
-      rules,
-    ),
-    { message },
-  );
-});
+    const rules = gitIgnoreRules(failing);
+    const message =
+      "Git could not read the ignore rules. Show ignored files to browse without them.";
+    await assert.rejects(
+      readDirectory(
+        root,
+        { ...hidden, folder: "", filter: "", after: null },
+        live(),
+        undefined,
+        rules,
+      ),
+      { message },
+    );
+    await assert.rejects(
+      searchFiles(root, { ...hidden, folder: "", query: "a" }, live(), {
+        ignore: rules,
+      }),
+      { message },
+    );
+  },
+);
 
 test("names go to Git on stdin, NUL-separated and literal", async () => {
   const calls: { args: readonly string[]; input: string | undefined }[] = [];

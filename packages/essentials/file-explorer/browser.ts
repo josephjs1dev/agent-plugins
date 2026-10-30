@@ -132,7 +132,7 @@ export const searchResultSchema = z.object({
   entries: z.array(fileEntrySchema).max(PAGE_SIZE),
   /** More files matched than `entries` holds. */
   truncated: z.boolean(),
-  /** The scan skipped folders: unreadable, too deep, or past the entry limit. */
+  /** The deadline or an unreadable folder left the scan incomplete. */
   limited: z.boolean(),
 });
 export type FileSearchResult = z.infer<typeof searchResultSchema>;
@@ -209,3 +209,47 @@ export const SEARCH_EXCLUDED_DIRECTORIES: ReadonlySet<string> = new Set([
   ".turbo",
   ".claude/worktrees",
 ]);
+
+/**
+ * Whether a folder of `path` below `folder` is one that search skips. Both
+ * paths are relative to the workspace root.
+ */
+export function isSearchExcluded(path: string, folder: string): boolean {
+  const folders = path.split("/").slice(0, -1);
+  const below = folder ? folder.split("/").length : 0;
+
+  return folders.some(
+    (name, index) =>
+      index >= below &&
+      (SEARCH_EXCLUDED_DIRECTORIES.has(name) ||
+        SEARCH_EXCLUDED_DIRECTORIES.has(folders.slice(0, index + 1).join("/"))),
+  );
+}
+
+/**
+ * The `rg --files` arguments of a filename search. The `!` globs prune the
+ * `SEARCH_EXCLUDED_DIRECTORIES` below the searched folder.
+ */
+export function ripgrepFileArgs(request: FileSearchRequest): string[] {
+  const args = ["--files", "--null", "--no-config"];
+
+  if (request.showHidden) {
+    args.push("--hidden");
+  }
+
+  if (request.showIgnored) {
+    args.push("--no-ignore");
+  }
+
+  for (const directory of SEARCH_EXCLUDED_DIRECTORIES) {
+    args.push("--glob", "!" + directory);
+  }
+
+  args.push("--");
+
+  if (request.folder) {
+    args.push(request.folder);
+  }
+
+  return args;
+}

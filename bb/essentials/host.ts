@@ -41,7 +41,9 @@ export default experimental_defineHostEntry({
     "file_explorer.directory": ({ rootPath, ...input }, context) =>
       readDirectory(rootPath, input, context.signal),
     "file_explorer.search": ({ rootPath, ...input }, context) =>
-      searchFiles(rootPath, input, context.signal),
+      searchFiles(rootPath, input, context.signal, {
+        bin: process.env.ESSENTIALS_RG_BIN || "rg",
+      }),
     "file_explorer.content": ({ rootPath, ...input }, context) =>
       searchContent(rootPath, input, context.signal, {
         bin: process.env.ESSENTIALS_RG_BIN || "rg",

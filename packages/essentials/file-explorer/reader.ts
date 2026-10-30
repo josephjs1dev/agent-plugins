@@ -3,12 +3,14 @@ import { opendir, realpath } from "node:fs/promises";
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import {
   PAGE_SIZE,
-  SEARCH_EXCLUDED_DIRECTORIES,
   directoryRequestSchema,
   fileEntrySchema,
   finishPage,
   isHiddenName,
+  isHiddenPath,
+  isSearchExcluded,
   pageCandidates,
+  ripgrepFileArgs,
   searchCandidates,
   searchRequestSchema,
   searchScore,
@@ -19,6 +21,7 @@ import {
   type FileSearchResult,
 } from "./browser";
 import { gitIgnoreRules, type IgnoreRules } from "./ignored";
+import { runRipgrep, type RipgrepOptions } from "./ripgrep";
 
 /** The file system calls the reader makes. Tests replace them. */
 export interface DirectoryIO {
@@ -30,15 +33,6 @@ const directoryIO: DirectoryIO = {
   canonicalize: (path) => realpath(path),
   open: (path) => opendir(path),
 };
-
-export interface SearchLimits {
-  /** Directory entries one search reads at most. */
-  entries: number;
-  /** Folder levels below the search folder that one search enters at most. */
-  depth: number;
-}
-
-const SEARCH_LIMITS: SearchLimits = { entries: 100_000, depth: 64 };
 
 const GIT_IGNORE_RULES = gitIgnoreRules();
 
@@ -100,13 +94,6 @@ function entryOf(
   return parsed.success ? parsed.data : null;
 }
 
-function errorCode(error: unknown): string | undefined {
-  return (error as { code?: string } | null)?.code;
-}
-
-const isDenied = (error: unknown) =>
-  errorCode(error) === "EACCES" || errorCode(error) === "EPERM";
-
 /**
  * Reads one page of `folder` below `rootPath`. The scan keeps at most two
  * pages of candidates in memory. Without `showIgnored`, it drops the entries
@@ -163,143 +150,111 @@ export async function readDirectory(
   return finishPage(candidates);
 }
 
+export interface FileSearchOptions extends RipgrepOptions {
+  /** Git's ignore rules. Tests replace them. */
+  ignore?: IgnoreRules;
+}
+
+/** A path record above this size stops the search as limited. */
+const MAX_PATH_CHARS = 64 * 1024;
+
 /**
- * Searches file names and paths in `folder` and its subfolders: a bounded,
- * cancellable depth-first scan. It skips `SEARCH_EXCLUDED_DIRECTORIES`,
- * follows no link, and stays inside the canonical root. Without
- * `showIgnored`, one Git read lists the ignored paths first, and the scan
- * skips them. Each directory iterator closes on an early exit.
+ * Searches file names and paths in `folder` and its subfolders. `rg --files`
+ * lists the files under a deadline, with no entry or depth limit. It skips
+ * `SEARCH_EXCLUDED_DIRECTORIES`, follows no link, and stays inside the
+ * canonical root. Without `showIgnored`, ripgrep follows the ignore rules, and
+ * one Git read adds the tracked files that match them. The deadline or an
+ * unreadable folder returns the partial result.
  */
 export async function searchFiles(
   rootPath: string,
   input: FileSearchRequest,
   signal: AbortSignal,
-  io: DirectoryIO = directoryIO,
-  limits: SearchLimits = SEARCH_LIMITS,
-  ignore: IgnoreRules = GIT_IGNORE_RULES,
+  { ignore = GIT_IGNORE_RULES, ...options }: FileSearchOptions = {},
 ): Promise<FileSearchResult> {
-  const { folder, showHidden, showIgnored, query } =
-    searchRequestSchema.parse(input);
-  const { root, target } = await workspaceFolder(rootPath, folder, signal, io);
-  const ignored = showIgnored
-    ? new Set<string>()
-    : await ignore.paths(target, signal);
-
-  if (ignored.has(".")) {
-    return { entries: [], truncated: false, limited: false };
-  }
-
-  signal.throwIfAborted();
-  let scanned = 0;
+  const request = searchRequestSchema.parse(input);
+  const { folder, showHidden, showIgnored, query } = request;
+  const { root, target } = await workspaceFolder(
+    rootPath,
+    folder,
+    signal,
+    directoryIO,
+  );
   let matches = 0;
-  let limited = false;
   let candidates: FileEntry[] = [];
+  // Sorting puts a path that both ripgrep and Git list next to its duplicate.
+  const best = () =>
+    searchCandidates(candidates, folder, query).filter(
+      (entry, index, all) => entry.path !== all[index - 1]?.path,
+    );
+  const add = (path: string) => {
+    const parsed = fileEntrySchema.safeParse({ path, kind: "file" });
 
-  async function walk(
-    absolute: string,
-    parent: string,
-    depth: number,
-  ): Promise<void> {
-    signal.throwIfAborted();
-    let directory: AsyncIterable<Dirent>;
+    if (parsed.success && searchScore(path, folder, query) !== null) {
+      matches++;
+      candidates.push(parsed.data);
 
-    try {
-      directory = await io.open(absolute);
-    } catch (error) {
-      if (depth > 0 && errorCode(error) === "ENOENT") {
-        return;
+      if (candidates.length > PAGE_SIZE * 2) {
+        candidates = best();
       }
-
-      if (depth > 0 && isDenied(error)) {
-        limited = true;
-
-        return;
-      }
-
-      throw error;
     }
 
-    for await (const dirent of directory) {
-      signal.throwIfAborted();
+    return true;
+  };
 
-      if (++scanned > limits.entries) {
-        limited = true;
+  // ripgrep lists a folder named on its command line even when Git ignores it.
+  const folderIgnored =
+    !showIgnored &&
+    folder !== "" &&
+    (await ignore.names(root, [folder], signal)).has(folder);
+  // A failed Git read stops ripgrep instead of leaving it to the deadline.
+  const failed = new AbortController();
+  const scan = AbortSignal.any([signal, failed.signal]);
+  const [listed, tracked] = await Promise.all([
+    folderIgnored
+      ? { code: 1, stderr: "", stopped: false, limited: false }
+      : runRipgrep(
+          root,
+          ripgrepFileArgs(request),
+          scan,
+          "\0",
+          add,
+          options,
+          MAX_PATH_CHARS,
+        ),
+    showIgnored
+      ? []
+      : ignore.trackedPaths(target, signal).catch((error: unknown) => {
+          failed.abort();
+          throw error;
+        }),
+  ]);
+  signal.throwIfAborted();
 
-        return;
-      }
+  for (const path of tracked) {
+    const scoped = folder ? folder + "/" + path : path;
 
-      const entry = entryOf(dirent, parent, showHidden);
-
-      if (
-        !entry ||
-        ignored.has(folder ? entry.path.slice(folder.length + 1) : entry.path)
-      ) {
-        continue;
-      }
-
-      if (entry.kind === "file") {
-        if (searchScore(entry.path, folder, query) !== null) {
-          matches++;
-          candidates.push(entry);
-
-          if (candidates.length > PAGE_SIZE * 2) {
-            candidates = searchCandidates(candidates, folder, query);
-          }
-        }
-
-        continue;
-      }
-
-      if (
-        SEARCH_EXCLUDED_DIRECTORIES.has(dirent.name) ||
-        SEARCH_EXCLUDED_DIRECTORIES.has(entry.path)
-      ) {
-        continue;
-      }
-
-      if (depth >= limits.depth) {
-        limited = true;
-        continue;
-      }
-
-      signal.throwIfAborted();
-      let child: string;
-
-      try {
-        child = await io.canonicalize(resolve(absolute, dirent.name));
-      } catch (error) {
-        if (errorCode(error) === "ENOENT") {
-          continue;
-        }
-
-        if (isDenied(error)) {
-          limited = true;
-          continue;
-        }
-
-        throw error;
-      }
-
-      signal.throwIfAborted();
-
-      if (!isInside(root, child)) {
-        continue;
-      }
-
-      await walk(child, entry.path, depth + 1);
-
-      if (scanned > limits.entries) {
-        return;
-      }
+    if (
+      !isSearchExcluded(scoped, folder) &&
+      (showHidden || !isHiddenPath(path))
+    ) {
+      add(scoped);
     }
   }
 
-  await walk(target, folder, 0);
-  signal.throwIfAborted();
+  const { code, stderr, stopped, limited } = listed;
+
+  // ripgrep exits 1 when it lists nothing, and 2 after an unreadable folder
+  // or when the globs leave nothing to list.
+  if (!stopped && code !== 0 && code !== 1 && code !== 2) {
+    throw new Error(`ripgrep exited with code ${String(code)}.`);
+  }
 
   return {
-    entries: searchCandidates(candidates, folder, query),
+    entries: best(),
     truncated: matches > PAGE_SIZE,
-    limited,
+    limited: stopped
+      ? limited
+      : code === 2 && !stderr.includes("No files were searched"),
   };
 }

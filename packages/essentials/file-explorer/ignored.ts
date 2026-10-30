@@ -12,11 +12,10 @@ export interface IgnoreRules {
     signal: AbortSignal,
   ): Promise<ReadonlySet<string>>;
   /**
-   * The paths below the canonical `folder`, relative to it, that Git
-   * ignores. A folder whose untracked contents are all ignored appears once.
-   * `.` means that nothing below `folder` is visible.
+   * The tracked files below the canonical `folder`, relative to it, that
+   * match the ignore rules. Git keeps them visible, but ripgrep hides them.
    */
-  paths(folder: string, signal: AbortSignal): Promise<ReadonlySet<string>>;
+  trackedPaths(folder: string, signal: AbortSignal): Promise<string[]>;
 }
 
 const exitCode = (error: unknown) => (error as { code?: unknown } | null)?.code;
@@ -67,19 +66,12 @@ export function gitIgnoreRules(run: RunGit = runGit): IgnoreRules {
           .map((path) => path.replace(/^\.\//, "")),
       );
     },
-    async paths(folder, signal) {
+    async trackedPaths(folder, signal) {
       let output: string;
 
       try {
         output = await run(
-          [
-            "ls-files",
-            "-z",
-            "--others",
-            "--ignored",
-            "--exclude-standard",
-            "--directory",
-          ],
+          ["ls-files", "-z", "--cached", "--ignored", "--exclude-standard"],
           folder,
           signal,
         );
@@ -87,18 +79,13 @@ export function gitIgnoreRules(run: RunGit = runGit): IgnoreRules {
         signal.throwIfAborted();
 
         if (outsideRepository(error)) {
-          return new Set();
+          return [];
         }
 
         throw new Error(IGNORE_RULES_FAILED, { cause: error });
       }
 
-      return new Set(
-        output
-          .split("\0")
-          .filter(Boolean)
-          .map((path) => (path === "./" ? "." : path.replace(/\/$/, ""))),
-      );
+      return output.split("\0").filter(Boolean);
     },
   };
 }

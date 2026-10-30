@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import type { Dir } from "node:fs";
 import {
+  chmod,
   mkdir,
   mkdtemp,
   opendir,
@@ -37,6 +39,24 @@ afterEach(async () => {
 });
 
 const live = () => new AbortController().signal;
+const request = {
+  folder: "",
+  showHidden: true,
+  showIgnored: true,
+  query: "needle",
+};
+
+function hasRipgrep(): boolean {
+  try {
+    execFileSync("rg", ["--version"], { stdio: "ignore" });
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const skip = !hasRipgrep();
 const top = {
   folder: "",
   showHidden: true,
@@ -168,80 +188,84 @@ test("a listing checks cancellation between canonicalizations", async () => {
   assert.equal(canonicalizations, 1);
 });
 
-test("search finds nested files in the folder, skips caches, and follows no link", async () => {
-  const root = await tempDir();
-  const outside = await tempDir();
+test(
+  "search finds nested files in the folder, skips caches, and follows no link",
+  { skip },
+  async () => {
+    const root = await tempDir();
+    const outside = await tempDir();
 
-  for (const dir of [
-    "src/deep",
-    "src/needle-folder",
-    ".config",
-    ".git",
-    "node_modules",
-    ".venv",
-  ]) {
-    await mkdir(join(root, dir), { recursive: true });
-  }
+    for (const dir of [
+      "src/deep",
+      "src/needle-folder",
+      ".config",
+      ".git",
+      "node_modules",
+      ".venv",
+    ]) {
+      await mkdir(join(root, dir), { recursive: true });
+    }
 
-  for (const path of [
-    "Needle.ts",
-    "src/deep/needle-helper.ts",
-    "src/needle-folder/other.ts",
-    ".config/needle.json",
-    ".git/needle-secret",
-    "node_modules/needle-dependency",
-    ".venv/needle-cache",
-  ]) {
-    await writeFile(join(root, path), "");
-  }
-
-  await writeFile(join(outside, "needle-outside"), "");
-  await symlink(outside, join(root, "escape"), "dir");
-  const all = await searchFiles(
-    root,
-    { folder: "", showHidden: true, showIgnored: true, query: "NEEDLE" },
-    live(),
-  );
-  assert.deepEqual(
-    new Set(all.entries.map((entry) => entry.path)),
-    new Set([
+    for (const path of [
       "Needle.ts",
       "src/deep/needle-helper.ts",
       "src/needle-folder/other.ts",
       ".config/needle.json",
-    ]),
-  );
-  assert.equal(all.limited, false);
-  assert.equal(all.truncated, false);
-  const scoped = await searchFiles(
-    root,
-    {
-      folder: "src",
-      showHidden: true,
-      showIgnored: true,
-      query: "deep helper",
-    },
-    live(),
-  );
-  assert.deepEqual(scoped.entries, [
-    { path: "src/deep/needle-helper.ts", kind: "file" },
-  ]);
-  await assert.rejects(
-    searchFiles(
+      ".git/needle-secret",
+      "node_modules/needle-dependency",
+      ".venv/needle-cache",
+    ]) {
+      await writeFile(join(root, path), "");
+    }
+
+    await writeFile(join(outside, "needle-outside"), "");
+    await symlink(outside, join(root, "escape"), "dir");
+    const all = await searchFiles(
+      root,
+      { folder: "", showHidden: true, showIgnored: true, query: "NEEDLE" },
+      live(),
+    );
+    assert.deepEqual(
+      new Set(all.entries.map((entry) => entry.path)),
+      new Set([
+        "Needle.ts",
+        "src/deep/needle-helper.ts",
+        "src/needle-folder/other.ts",
+        ".config/needle.json",
+      ]),
+    );
+    assert.equal(all.limited, false);
+    assert.equal(all.truncated, false);
+    const scoped = await searchFiles(
       root,
       {
-        folder: "escape",
+        folder: "src",
         showHidden: true,
         showIgnored: true,
-        query: "needle",
+        query: "deep helper",
       },
       live(),
-    ),
-    /outside/,
-  );
-});
+    );
+    assert.deepEqual(scoped.entries, [
+      { path: "src/deep/needle-helper.ts", kind: "file" },
+    ]);
+    await assert.rejects(
+      searchFiles(
+        root,
+        {
+          folder: "escape",
+          showHidden: true,
+          showIgnored: true,
+          query: "needle",
+        },
+        live(),
+      ),
+      /outside/,
+    );
+  },
+);
 
-test("search bounds and ranks results and reports an incomplete scan", async () => {
+test("search bounds and ranks results", { skip }, async () => {
   const root = await tempDir();
 
   for (let n = 0; n < PAGE_SIZE * 3; n++) {
@@ -249,94 +273,98 @@ test("search bounds and ranks results and reports an incomplete scan", async () 
   }
 
   await writeFile(join(root, "needle"), "");
-  const request = {
-    folder: "",
-    showHidden: true,
-    showIgnored: true,
-    query: "needle",
-  };
   const result = await searchFiles(root, request, live());
   assert.equal(result.entries.length, PAGE_SIZE);
   assert.equal(result.entries[0]?.path, "needle");
   assert.equal(result.truncated, true);
   assert.equal(result.limited, false);
-  const limited = await searchFiles(root, request, live(), undefined, {
-    entries: 2,
-    depth: 64,
-  });
-  assert.equal(limited.limited, true);
-  assert.ok(limited.entries.length <= 2);
 });
 
-test("cancelling a search closes every open directory", async () => {
+test("search has no depth limit", { skip }, async () => {
   const root = await tempDir();
-  await mkdir(join(root, "nested"));
-  await writeFile(join(root, "nested", "needle-a"), "");
-  await writeFile(join(root, "nested", "needle-b"), "");
-  const controller = new AbortController();
-  const handles: Dir[] = [];
-  await assert.rejects(
-    searchFiles(
-      root,
-      { folder: "", showHidden: true, showIgnored: true, query: "needle" },
-      controller.signal,
-      abortingIO(controller, handles, (path) => path.endsWith("nested")),
-    ),
-  );
-  assert.equal(handles.length, 2);
-
-  for (const handle of handles) {
-    await assert.rejects(handle.read(), { code: "ERR_DIR_CLOSED" });
-  }
-});
-
-test("search keeps other results when a nested folder is unreadable", async () => {
-  const root = await tempDir();
-  await mkdir(join(root, "blocked"));
-  await writeFile(join(root, "needle.ts"), "");
-  const result = await searchFiles(
-    root,
-    { folder: "", showHidden: true, showIgnored: true, query: "needle" },
-    live(),
-    {
-      canonicalize: (path) => realpath(path),
-      open: async (path) => {
-        if (path.endsWith("blocked")) {
-          throw Object.assign(new Error("denied"), { code: "EACCES" });
-        }
-
-        return opendir(path);
-      },
-    },
-  );
+  const deep = Array.from({ length: 80 }, (_, n) => "d" + String(n)).join("/");
+  await mkdir(join(root, deep), { recursive: true });
+  await writeFile(join(root, deep, "needle.ts"), "");
+  const result = await searchFiles(root, request, live());
   assert.deepEqual(result, {
-    entries: [{ path: "needle.ts", kind: "file" }],
-    limited: true,
+    entries: [{ path: deep + "/needle.ts", kind: "file" }],
     truncated: false,
+    limited: false,
   });
 });
 
-test("hidden entries are left out when showHidden is off", async () => {
+test("the deadline returns a partial search, and cancellation rejects", async () => {
   const root = await tempDir();
-  await mkdir(join(root, ".github"));
-  await mkdir(join(root, "src"));
-  await writeFile(join(root, ".env"), "");
-  await writeFile(join(root, ".github", "needle.yml"), "");
-  await writeFile(join(root, "src", ".needle-hidden"), "");
-  await writeFile(join(root, "src", "needle.ts"), "");
-  const hidden = { ...top, showHidden: false };
-  assert.deepEqual(
-    (await readDirectory(root, hidden, live())).entries.map((e) => e.path),
-    ["src"],
+  // A stand-in for ripgrep that lists one file, then hangs.
+  const bin = join(root, "slow-rg");
+  await writeFile(bin, "#!/bin/sh\nprintf 'needle.ts\\0'\nexec sleep 30\n");
+  await chmod(bin, 0o755);
+  const partial = await searchFiles(root, request, live(), {
+    bin,
+    timeoutMs: 1_000,
+  });
+  assert.deepEqual(partial, {
+    entries: [{ path: "needle.ts", kind: "file" }],
+    truncated: false,
+    limited: true,
+  });
+  const controller = new AbortController();
+  setTimeout(() => controller.abort(), 50);
+  await assert.rejects(searchFiles(root, request, controller.signal, { bin }));
+  await assert.rejects(
+    searchFiles(root, request, live(), { bin: join(root, "no-rg") }),
+    /ripgrep \(rg\) is not installed/,
   );
-  assert.deepEqual(
-    (await readDirectory(root, top, live())).entries.map((e) => e.path),
-    [".github", "src", ".env"],
-  );
-  const found = await searchFiles(
-    root,
-    { folder: "", showHidden: false, showIgnored: true, query: "needle" },
-    live(),
-  );
-  assert.deepEqual(found.entries, [{ path: "src/needle.ts", kind: "file" }]);
 });
+
+test(
+  "search keeps other results when a nested folder is unreadable",
+  { skip: skip || process.getuid?.() === 0 },
+  async () => {
+    const root = await tempDir();
+    await mkdir(join(root, "blocked"));
+    await writeFile(join(root, "blocked", "needle-secret.ts"), "");
+    await writeFile(join(root, "needle.ts"), "");
+    await chmod(join(root, "blocked"), 0o000);
+
+    try {
+      const result = await searchFiles(root, request, live());
+      assert.deepEqual(result, {
+        entries: [{ path: "needle.ts", kind: "file" }],
+        limited: true,
+        truncated: false,
+      });
+    } finally {
+      await chmod(join(root, "blocked"), 0o755);
+    }
+  },
+);
+
+test(
+  "hidden entries are left out when showHidden is off",
+  { skip },
+  async () => {
+    const root = await tempDir();
+    await mkdir(join(root, ".github"));
+    await mkdir(join(root, "src"));
+    await writeFile(join(root, ".env"), "");
+    await writeFile(join(root, ".github", "needle.yml"), "");
+    await writeFile(join(root, "src", ".needle-hidden"), "");
+    await writeFile(join(root, "src", "needle.ts"), "");
+    const hidden = { ...top, showHidden: false };
+    assert.deepEqual(
+      (await readDirectory(root, hidden, live())).entries.map((e) => e.path),
+      ["src"],
+    );
+    assert.deepEqual(
+      (await readDirectory(root, top, live())).entries.map((e) => e.path),
+      [".github", "src", ".env"],
+    );
+    const found = await searchFiles(
+      root,
+      { ...request, showHidden: false },
+      live(),
+    );
+    assert.deepEqual(found.entries, [{ path: "src/needle.ts", kind: "file" }]);
+  },
+);

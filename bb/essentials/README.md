@@ -160,14 +160,17 @@ provider logins, and the data sources in detail.
   symlinks, and special files. They show hidden files unless the eye button
   hides them, and ignored files unless the ignored-files button hides them.
   To hide ignored files, the host asks Git: `git check-ignore` for each
-  folder page, before the page is built, and one `git ls-files --ignored`
-  for a search. Outside a Git work tree, nothing is ignored. When Git fails,
-  the Explorer says so instead of showing everything. A directory
-  page holds at most 200 entries. Search keeps the best 200 matches and ranks
-  filename matches first. It skips dependency and cache folders such as
-  `node_modules`, `.venv`, and `.cache`. It reads at most 100,000 entries and
-  64 folder levels, and a notice marks a partial result. A new search cancels
-  the same explorer's older one. Each read has a 15-second deadline. The
+  folder page, before the page is built. Outside a Git work tree, nothing is
+  ignored. When Git fails, the Explorer says so instead of showing
+  everything. A directory page holds at most 200 entries. Search lists files
+  with `rg --files` (ripgrep), with no entry or depth limit, and stops after
+  10 seconds. Set `ESSENTIALS_RG_BIN` when `rg` is not on the host's `PATH`.
+  To hide ignored files, ripgrep follows `.gitignore`, and one
+  `git ls-files --cached --ignored` adds back the tracked files that match
+  it. Search keeps the best 200 matches and ranks filename matches first. It
+  skips dependency and cache folders such as `node_modules`, `.venv`, and
+  `.cache`. A notice marks a partial result. A new search cancels the same
+  explorer's older one. Each read has a 15-second deadline. The
   plugin reads no file content: bb's preview shows it. The view state lives
   in the app's session storage, or in memory when storage is unavailable, so
   closing bb clears it. The hidden-files and ignored-files choices live in
